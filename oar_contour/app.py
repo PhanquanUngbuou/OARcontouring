@@ -212,8 +212,10 @@ def pick_ct_series(upload_dir: Path, ct_dir: Path) -> tuple[int, int]:
 
 
 class JobManager:
-    def __init__(self, root: Path, segmenter_factory):
-        """segmenter_factory(device) -> Segmenter; device là "gpu" | "mps" | "cpu"."""
+    def __init__(self, root: Path, segmenter_factory=None, isolate: bool = False):
+        """segmenter_factory(device) -> Segmenter; device là "gpu" | "mps" | "cpu".
+        isolate=True: mỗi ca chạy trong tiến trình riêng (app thật), segmenter_factory bỏ qua."""
+        self.isolate = isolate
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
         self.jobs: dict[str, Job] = {}
@@ -270,27 +272,13 @@ class JobManager:
                     job.n_files = n
                     if skipped:
                         say(f"Dùng series CT {n} lát, bỏ qua {skipped} series khác")
-                from .pipeline import run_pipeline
-                from .segment import pick_device
-
-                dev = pick_device() if job.device == "auto" else "cpu"
-                seg = self._segmenters.get(dev)
-                if seg is None:
-                    seg = self._segmenters[dev] = self._segmenter_factory(dev)
-                seg.fast = job.fast
-                job.device_used = getattr(seg, "device", dev)
-                report = run_pipeline(job.ct_dir, job.rtstruct, seg, site=job.site,
-                                      progress=lambda m: say(f"{m} ({DEVICE_LABEL.get(job.device_used, job.device_used)})"))
-                if getattr(seg, "fell_back", False) and dev == "mps":
-                    job.device_used = "cpu_fallback"
-                job.result = {
-                    "sites": report.sites,
-                    "structures": [{"name": n, "cc": round(v, 1)} for n, v in report.written.items()],
-                    "skipped": report.skipped_empty,
-                    "not_covered": report.not_covered,
-                    "notes": report.notes,
-                }
+                if self.isolate:
+                    job.result, job.device_used = self._segment_in_subprocess(job, say)
+                else:
+                    job.result, job.device_used = _segment(
+                        job.ct_dir, job.rtstruct, job.site, job.device, job.fast, say, self._get_segmenter)
                 say("Chuẩn bị ảnh để xem")
+                self._drop_viewers()
                 job.viewer = ViewerData.load(job.ct_dir, job.rtstruct)
                 job.status, job.message = "done", "Hoàn tất"
                 (job.dir / "job.json").write_text(json.dumps(
@@ -305,10 +293,90 @@ class JobManager:
             finally:
                 job.finished = time.time()
 
+    def _get_segmenter(self, dev: str):
+        seg = self._segmenters.get(dev)
+        if seg is None:
+            seg = self._segmenters[dev] = self._segmenter_factory(dev)
+        return seg
+
+    def _segment_in_subprocess(self, job: Job, say) -> tuple[dict, str]:
+        """Chạy model trong tiến trình riêng: xong ca là trả lại toàn bộ RAM (PyTorch, model)."""
+        import multiprocessing as mp
+
+        ctx = mp.get_context("spawn")
+        q = ctx.Queue()
+        proc = ctx.Process(target=_segment_worker, daemon=False,
+                           args=(str(job.ct_dir), str(job.rtstruct), job.site, job.device, job.fast, q))
+        proc.start()
+        try:
+            while True:
+                try:
+                    kind, payload = q.get(timeout=1.0)
+                except Exception:  # queue.Empty
+                    if not proc.is_alive():
+                        raise RuntimeError(
+                            "Tiến trình khoanh bị dừng đột ngột (thường do máy hết RAM). "
+                            "Hãy đóng bớt ứng dụng (Chrome, Zalo…) rồi chạy lại.")
+                    continue
+                if kind == "msg":
+                    say(payload)
+                elif kind == "done":
+                    return payload["result"], payload["device_used"]
+                elif kind == "error":
+                    raise RuntimeError(payload)
+        finally:
+            proc.join(timeout=30)
+            if proc.is_alive():
+                proc.kill()
+
+    def _drop_viewers(self):
+        """Chỉ giữ ảnh của 1 ca trong RAM."""
+        for j in self.jobs.values():
+            j.viewer = None
+
     def viewer(self, job: Job) -> ViewerData:
         if job.viewer is None:
+            self._drop_viewers()
             job.viewer = ViewerData.load(job.ct_dir, job.rtstruct)
         return job.viewer
+
+
+def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter) -> tuple[dict, str]:
+    from .pipeline import run_pipeline
+    from .segment import pick_device
+
+    dev = pick_device() if device_pref == "auto" else "cpu"
+    seg = get_segmenter(dev)
+    seg.fast = fast
+    used = getattr(seg, "device", dev)
+    report = run_pipeline(ct_dir, rtstruct, seg, site=site,
+                          progress=lambda m: say(f"{m} ({DEVICE_LABEL.get(used, used)})"))
+    if getattr(seg, "fell_back", False) and dev == "mps":
+        used = "cpu_fallback"
+    result = {
+        "sites": report.sites,
+        "structures": [{"name": n, "cc": round(v, 1)} for n, v in report.written.items()],
+        "skipped": report.skipped_empty,
+        "not_covered": report.not_covered,
+        "notes": report.notes,
+    }
+    return result, used
+
+
+def _segment_worker(ct_dir, rtstruct, site, device_pref, fast, q):
+    """Chạy trong tiến trình con (spawn)."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.getLogger("pydicom").setLevel(logging.ERROR)
+    try:
+        from .segment import TotalSegmentatorRunner
+
+        result, used = _segment(Path(ct_dir), Path(rtstruct), site, device_pref, fast,
+                                lambda m: q.put(("msg", m)),
+                                lambda dev: TotalSegmentatorRunner(device=dev))
+        q.put(("done", {"result": result, "device_used": used}))
+    except Exception as e:
+        logging.error("Lỗi khi khoanh:\n%s", traceback.format_exc())
+        q.put(("error", str(e) or e.__class__.__name__))
 
 
 # ------------------------------------------------------------------ HTTP
@@ -458,14 +526,8 @@ def make_handler(manager: JobManager, server_ref: dict):
 
 
 def serve(root: Path, port: int = DEFAULT_PORT, open_browser: bool = True, segmenter_factory=None):
-    if segmenter_factory is None:
-        from .segment import TotalSegmentatorRunner
-
-        def segmenter_factory(device):
-            return TotalSegmentatorRunner(device=device)
-
     url = f"http://127.0.0.1:{port}/"
-    manager = JobManager(root, segmenter_factory)
+    manager = JobManager(root, segmenter_factory, isolate=segmenter_factory is None)
     ref: dict = {}
     try:
         server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(manager, ref))
