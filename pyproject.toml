@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oar-contour"
+version = "0.1.0"
+description = "Tự động khoanh OAR (bản nháp) từ CT mô phỏng, xuất RTSTRUCT cho TPS"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "scipy",
+  "SimpleITK",
+  "pydicom>=3",
+  "pynetdicom>=2",
+  "rt-utils>=1.2.7",
+  "matplotlib",
+]
+
+[project.optional-dependencies]
+# Model phân vùng. Cài riêng vì kéo theo PyTorch (nặng, cần chọn bản CUDA phù hợp GPU).
+model = ["TotalSegmentator>=2.4"]
+test = ["pytest"]
+
+[project.scripts]
+oar-contour = "oar_contour.cli:main"
+
+[tool.setuptools]
+packages = ["oar_contour"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

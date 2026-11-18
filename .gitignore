@@ -1,0 +1,10 @@
+__pycache__/
+*.egg-info/
+.venv/
+oar_work/
+*.dcm
+!tests/**/*.dcm
+evaluation.csv
+demo/
+*.png
+!docs/*.png
