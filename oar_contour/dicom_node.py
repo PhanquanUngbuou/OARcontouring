@@ -94,7 +94,9 @@ class OarNode:
         ds.file_meta = event.file_meta
         if getattr(ds, "Modality", "") != "CT":
             return 0x0000  # nhận nhưng bỏ qua
-        called = event.assoc.acceptor.ae_title.strip()
+        # AE title mà CT-sim gọi tới (không phải AE của chính node) -> chọn vùng
+        prim = event.assoc.acceptor.primitive
+        called = str(getattr(prim, "called_ae_title", "") or event.assoc.acceptor.ae_title).strip()
         site = self.cfg.ae_site.get(called, self.cfg.default_site)
         series_dir = self.incoming / short_id(ds.SeriesInstanceUID)
         series_dir.mkdir(exist_ok=True)

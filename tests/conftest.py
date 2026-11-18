@@ -117,13 +117,20 @@ class FakeSegmenter:
         self.labelmaps = labelmaps
         self.calls: list[str] = []
         self.kwargs: list[dict] = []
+        self.sizes: list[int] = []  # số lát ảnh đưa vào mỗi lần chạy
+        self._full = None
 
     def run(self, image, task, roi_subset=None, fastest=False):
         self.calls.append(task)
         self.kwargs.append({"roi_subset": roi_subset, "fastest": fastest})
+        self.sizes.append(image.GetSize()[2])
+        if self._full is None:
+            self._full = image  # lần gọi đầu luôn là ảnh đầy đủ
+        z0 = int(round(self._full.TransformPhysicalPointToContinuousIndex(image.GetOrigin())[2]))
         arr = self.labelmaps.get(task)
         if arr is None:
-            arr = np.zeros(image.GetSize()[::-1], np.int16)
+            arr = np.zeros(self._full.GetSize()[::-1], np.int16)
+        arr = arr[z0:z0 + image.GetSize()[2]]
         base = TOTAL_MAP if task == "total" else BREAST_MAP if task == "breasts" else {}
         return arr.copy(), _complete(base, task)
 

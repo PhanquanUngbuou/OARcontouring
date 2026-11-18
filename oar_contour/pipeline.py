@@ -13,7 +13,8 @@ import SimpleITK as sitk
 from .segment import Segmenter, load_ct_series
 from .structures import (
     NOT_COVERED,
-    REGION_MARKERS,
+    REGION_RULES,
+    TASK_CROP,
     Structure,
     structures_for,
     tasks_for,
@@ -25,7 +26,6 @@ log = logging.getLogger(__name__)
 STRUCTURE_SET_LABEL = "AI_OAR_DRAFT"
 ROI_DESCRIPTION = "AI draft - bac si phai duyet truoc khi lap ke hoach"
 MIN_VOXELS_DEFAULT = 50  # bỏ các mảnh quá nhỏ (cơ quan chỉ lọt mép trường chụp)
-REGION_MIN_VOXELS = 2000  # ngưỡng để coi là "vùng này có trong ảnh"
 
 
 @dataclass
@@ -49,16 +49,42 @@ class Report:
         return "\n".join(lines)
 
 
-def detect_regions(total_labels: np.ndarray, class_map: dict[int, str]) -> list[str]:
-    """Nhận diện vùng chụp từ kết quả task 'total'."""
+def detect_regions(total_labels: np.ndarray, class_map: dict[int, str], voxel_cc: float) -> list[str]:
+    """Nhận diện vùng chụp từ kết quả task 'total' theo thể tích (xem REGION_RULES)."""
     name_to_idx = {v: k for k, v in class_map.items()}
     counts = np.bincount(total_labels.ravel(), minlength=max(class_map) + 1)
     regions = []
-    for region, markers in REGION_MARKERS.items():
-        n = sum(int(counts[name_to_idx[m]]) for m in markers if m in name_to_idx)
-        if n >= REGION_MIN_VOXELS:
-            regions.append(region)
+    for region, rules in REGION_RULES.items():
+        for labels, min_cc in rules:
+            n = sum(int(counts[name_to_idx[m]]) for m in labels if m in name_to_idx)
+            if n * voxel_cc >= min_cc:
+                regions.append(region)
+                break
     return regions
+
+
+def crop_range(rough: np.ndarray, class_map: dict[int, str], labels, margin_mm: float,
+               image: sitk.Image) -> tuple[int, int]:
+    """Đoạn lát [z0, z1) chứa các nhãn (theo kết quả model nhanh) + lề; không thấy thì cả ảnh."""
+    nz = image.GetSize()[2]
+    name_to_idx = {v: k for k, v in class_map.items()}
+    ids = [name_to_idx[l] for l in labels if l in name_to_idx]
+    zs = np.nonzero(np.isin(rough, ids).any(axis=(1, 2)))[0] if ids else np.array([])
+    if zs.size == 0:
+        return 0, nz
+    pad = int(np.ceil(margin_mm / image.GetSpacing()[2]))
+    return max(0, int(zs.min()) - pad), min(nz, int(zs.max()) + 1 + pad)
+
+
+def largest_component(mask: np.ndarray) -> np.ndarray:
+    from scipy import ndimage
+
+    lab, n = ndimage.label(mask)
+    if n <= 1:
+        return mask
+    sizes = np.bincount(lab.ravel())
+    sizes[0] = 0
+    return lab == int(sizes.argmax())
 
 
 def _patient_x(image: sitk.Image) -> np.ndarray:
@@ -109,6 +135,8 @@ def build_masks(
             xs = _patient_x(image)
             keep_cols = xs > midline if s.side == "left" else xs <= midline
             mask &= keep_cols[np.newaxis, np.newaxis, :]
+        if s.single and mask.any():
+            mask = largest_component(mask)
         if int(mask.sum()) < min_voxels:
             empty.append(s.name)
             continue
@@ -168,10 +196,12 @@ def run_pipeline(
     labelmaps: dict[str, np.ndarray] = {}
     class_maps: dict[str, dict[int, str]] = {}
 
+    voxel_cc = float(np.prod(image.GetSpacing())) / 1000.0
+    # Model nhanh 6 mm (vài giây): nhận diện vùng + biết cắt ảnh ở đâu cho model phụ
+    say("Nhận diện vùng chụp (model nhanh 6 mm)")
+    rough, rough_map = segmenter.run(image, "total", fastest=True)
     if site == "auto":
-        say("Nhận diện vùng chụp (model nhanh 6 mm)")
-        rough, rough_map = segmenter.run(image, "total", fastest=True)
-        sites = detect_regions(rough, rough_map)
+        sites = detect_regions(rough, rough_map, voxel_cc)
         if not sites:
             raise RuntimeError("Không nhận diện được vùng chụp; hãy chọn vùng giải phẫu.")
     else:
@@ -183,9 +213,18 @@ def run_pipeline(
     labelmaps["total"], class_maps["total"] = segmenter.run(
         image, "total", roi_subset=total_labels_for(structures))
     for task in tasks_for(structures):
-        if task not in labelmaps:
-            say(f"Chạy model bổ sung: {task}")
-            labelmaps[task], class_maps[task] = segmenter.run(image, task)
+        if task in labelmaps:
+            continue
+        z0, z1 = 0, image.GetSize()[2]
+        if task in TASK_CROP:
+            labels, margin = TASK_CROP[task]
+            z0, z1 = crop_range(rough, rough_map, labels, margin, image)
+        say(f"Chạy model bổ sung: {task} ({z1 - z0}/{image.GetSize()[2]} lát)")
+        sub = image if (z0, z1) == (0, image.GetSize()[2]) else image[:, :, z0:z1]
+        arr, class_maps[task] = segmenter.run(sub, task)
+        full = np.zeros(image.GetSize()[::-1], arr.dtype)
+        full[z0:z1] = arr
+        labelmaps[task] = full
 
     masks, empty = build_masks(structures, labelmaps, class_maps, image, min_voxels)
     if not masks:
@@ -194,7 +233,6 @@ def run_pipeline(
     say("Ghi file RTSTRUCT")
     write_rtstruct(dicom_dir, image, masks, colors, out_path)
 
-    voxel_cc = float(np.prod(image.GetSpacing())) / 1000.0
     report = Report(sites=sites, skipped_empty=empty)
     report.written = {n: float(m.sum()) * voxel_cc for n, m in masks.items()}
     report.not_covered = list(dict.fromkeys(x for s in sites for x in NOT_COVERED.get(s, [])))

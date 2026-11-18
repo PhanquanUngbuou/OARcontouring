@@ -22,12 +22,19 @@ class Structure:
     # (dùng cho nhãn không tách bên, ví dụ "breast").
     side: str | None = None
     note: str = ""
+    # True: cơ quan liền một khối -> chỉ giữ khối lớn nhất, bỏ mảnh vụn khoanh nhầm chỗ khác
+    single: bool = True
+
+
+# Cơ quan có thể gồm nhiều khối rời trên ảnh -> KHÔNG lọc khối lớn nhất
+_MULTI_PART = {"Lungs", "Bowel_Small", "Colon", "Bone_Pelvic", "SpinalCord", "Esophagus", "Duodenum",
+               "Breast_L", "Breast_R", "Glnd_Thyroid", "Trachea", "OpticNrv_L", "OpticNrv_R"}
 
 
 def _s(name, task, labels, color, side=None, note=""):
     if isinstance(labels, str):
         labels = (labels,)
-    return Structure(name, task, tuple(labels), tuple(color), side, note)
+    return Structure(name, task, tuple(labels), tuple(color), side, note, name not in _MULTI_PART)
 
 
 # Danh sách đã rút gọn: chỉ giữ OAR thường dùng trong ràng buộc liều của khoa.
@@ -113,12 +120,24 @@ NOT_COVERED: dict[str, list[str]] = {
                  "Oral cavity", "Lips", "Brachial plexus", "Pituitary"],
 }
 
-# Nhóm nhãn trong task "total" dùng để tự nhận diện vùng chụp (site="auto").
-REGION_MARKERS: dict[str, tuple[str, ...]] = {
-    "headneck": ("brain", "skull"),
-    "thorax": ("lung_upper_lobe_left", "lung_upper_lobe_right", "heart"),
-    "abdomen": ("liver", "kidney_left", "kidney_right"),
-    "pelvis": ("urinary_bladder", "hip_left", "hip_right"),
+# Tự nhận diện vùng chụp (site="auto") từ model nhanh 6 mm.
+# Một vùng được chọn khi tổng thể tích các nhãn >= ngưỡng (cc), tức là phần LỚN cơ quan
+# chuẩn nằm trong ảnh, không phải chỉ một mảnh lọt vào mép trường chụp.
+REGION_RULES: dict[str, list[tuple[tuple[str, ...], float]]] = {
+    "headneck": [(("brain",), 300.0), (("skull",), 150.0)],
+    "thorax": [(("lung_upper_lobe_left", "lung_lower_lobe_left", "lung_upper_lobe_right",
+                 "lung_middle_lobe_right", "lung_lower_lobe_right"), 1500.0)],
+    "abdomen": [(("liver",), 900.0), (("kidney_left", "kidney_right"), 180.0)],
+    "pelvis": [(("urinary_bladder",), 40.0), (("hip_left", "hip_right"), 250.0)],
+}
+
+# Model phụ chỉ chạy trên đoạn ảnh (theo trục đầu–chân) chứa các nhãn này (+ lề), không chạy cả người.
+TASK_CROP: dict[str, tuple[tuple[str, ...], float]] = {
+    "head_glands_cavities": (("brain", "skull", "vertebrae_C1", "vertebrae_C2", "vertebrae_C3"), 40.0),
+    "craniofacial_structures": (("brain", "skull", "vertebrae_C1", "vertebrae_C2", "vertebrae_C3",
+                                 "vertebrae_C4"), 40.0),
+    "breasts": (("lung_upper_lobe_left", "lung_lower_lobe_left", "lung_upper_lobe_right",
+                 "lung_middle_lobe_right", "lung_lower_lobe_right", "sternum"), 40.0),
 }
 
 

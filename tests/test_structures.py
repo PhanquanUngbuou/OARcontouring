@@ -1,6 +1,6 @@
 import pytest
 
-from oar_contour.structures import NOT_COVERED, REGION_MARKERS, SITES
+from oar_contour.structures import NOT_COVERED, REGION_RULES, SITES, TASK_CROP
 
 
 def test_every_label_exists_in_free_totalsegmentator_task():
@@ -12,12 +12,15 @@ def test_every_label_exists_in_free_totalsegmentator_task():
             missing = set(s.labels) - names
             assert not missing, f"{site}/{s.name}: không có nhãn {missing} trong task {s.task}"
     total = set(m.class_map["total"].values())
-    for markers in REGION_MARKERS.values():
-        assert set(markers) <= total
+    for rules in REGION_RULES.values():
+        for labels, _ in rules:
+            assert set(labels) <= total
+    for labels, _ in TASK_CROP.values():
+        assert set(labels) <= total
 
 
 def test_sites_consistent():
-    assert set(SITES) == set(NOT_COVERED) == set(REGION_MARKERS)
+    assert set(SITES) == set(NOT_COVERED) == set(REGION_RULES)
     for items in SITES.values():
         names = [s.name for s in items]
         assert len(names) == len(set(names))

@@ -19,7 +19,18 @@ def _rt_mask_to_sitk_order(rt, image, mask):
     return out
 
 
-def test_thorax_auto_roundtrip(ct_dir, tmp_path):
+SMALL_RULES = {  # ngưỡng thể tích thu nhỏ cho phantom bé
+    "headneck": [(("brain",), 5.0)],
+    "thorax": [(("lung_upper_lobe_left", "lung_upper_lobe_right"), 20.0)],
+    "abdomen": [(("liver",), 50.0)],
+    "pelvis": [(("urinary_bladder",), 5.0)],
+}
+
+
+def test_thorax_auto_roundtrip(ct_dir, tmp_path, monkeypatch):
+    import oar_contour.pipeline as pl
+
+    monkeypatch.setattr(pl, "REGION_RULES", SMALL_RULES)
     labels = thorax_labels()
     seg = FakeSegmenter(labels)
     out = tmp_path / "rs.dcm"
@@ -27,6 +38,7 @@ def test_thorax_auto_roundtrip(ct_dir, tmp_path):
 
     assert report.sites == ["thorax"]
     assert seg.calls == ["total", "total", "breasts"]
+    assert seg.sizes[2] == 24  # phổi chiếm lát 4..19, lề 40 mm -> cả ảnh
     assert seg.kwargs[0]["fastest"] is True  # nhận diện vùng
     assert "heart" in seg.kwargs[1]["roi_subset"] and "liver" not in seg.kwargs[1]["roi_subset"]
     for name in ["Lung_L", "Lung_R", "Lungs", "Heart", "SpinalCord", "Breast_L", "Breast_R"]:
@@ -78,12 +90,40 @@ def test_reversed_slice_direction(tmp_path):
     assert dice(got, labels["total"] == 51) > 0.98
 
 
-def test_detect_regions():
+def test_detect_regions_by_volume():
     t = np.zeros((10, 50, 50), np.int16)
-    t[:, :30, :30] = 5  # liver 9000 voxels
-    assert detect_regions(t, TOTAL_MAP) == ["abdomen"]
-    t[:, 30:, 30:] = 90  # brain
-    assert detect_regions(t, TOTAL_MAP) == ["headneck", "abdomen"]
+    t[:, :30, :30] = 5  # gan 9000 voxel
+    assert detect_regions(t, TOTAL_MAP, voxel_cc=0.2) == ["abdomen"]  # 1800 cc
+    t[:2, 40:, 40:] = 90  # mảnh não nhỏ lọt mép ảnh: 200 voxel = 40 cc -> KHÔNG tính đầu cổ
+    assert detect_regions(t, TOTAL_MAP, voxel_cc=0.2) == ["abdomen"]
+    t[:, 30:, 30:] = 90  # não đủ lớn: 4000 voxel = 800 cc
+    assert detect_regions(t, TOTAL_MAP, voxel_cc=0.2) == ["headneck", "abdomen"]
+    assert detect_regions(t, TOTAL_MAP, voxel_cc=0.01) == []  # cùng số voxel nhưng thể tích nhỏ
+
+
+def test_stray_fragment_removed(ct_dir, tmp_path):
+    labels = thorax_labels()
+    labels["total"][22:24, 2:4, 2:4] = 51  # mảnh "tim" lạc ở góc ảnh
+    report = run_pipeline(ct_dir, tmp_path / "x.dcm", FakeSegmenter(labels), site="thorax")
+    exact = (labels["total"] == 51).sum() - 8
+    assert report.written["Heart"] == pytest.approx(exact * 2 * 2 * 3 / 1000)
+
+
+def test_extra_model_runs_on_cropped_slices(ct_dir, tmp_path):
+    labels = thorax_labels()
+    seg = FakeSegmenter(labels)
+    run_pipeline(ct_dir, tmp_path / "x.dcm", seg, site="thorax")
+    # vú chỉ chạy trên đoạn có phổi (lát 4..19) + lề 40 mm (14 lát -> chạm 2 đầu ảnh 24 lát)
+    i = seg.calls.index("breasts")
+    assert seg.sizes[i] <= 24
+    # ca đầu cổ: model tuyến chỉ chạy quanh vùng não
+    labels["total"][:] = 0
+    labels["total"][0:4, 10:30, 10:50] = 90  # não ở 4 lát đầu
+    labels["total"][:, 40:43, 31:33] = 79
+    seg = FakeSegmenter(labels)
+    run_pipeline(ct_dir, tmp_path / "y.dcm", seg, site="headneck")
+    i = seg.calls.index("head_glands_cavities")
+    assert seg.sizes[i] == 4 + 14  # 4 lát não + lề 40 mm (14 lát x 3 mm) phía dưới
 
 
 def test_not_covered_deduplicated(ct_dir, tmp_path):
