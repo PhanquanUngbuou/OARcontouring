@@ -43,8 +43,8 @@ nhận diện vùng, rồi `roi_subset` cắt ảnh quanh vùng cần), nhanh kh
 Xem bảng chi tiết bằng lệnh `oar-contour structures`. Với tiểu khung và đầu cổ, giai đoạn
 sau có thể **tự huấn luyện model bổ sung** (nnU-Net) bằng contour cũ của khoa để vẽ các cơ quan còn thiếu.
 
-> 🍎 **Dùng MacBook?** Xem [HUONG_DAN_MAC.md](HUONG_DAN_MAC.md): cài đặt, chạy demo với ảnh mẫu
-> công khai, xem contour bằng 3D Slicer.
+> 🍎 **MacBook:** [HUONG_DAN_MAC.md](HUONG_DAN_MAC.md) · 🪟 **Windows (card NVIDIA):**
+> [HUONG_DAN_WINDOWS.md](HUONG_DAN_WINDOWS.md)
 
 ## App giao diện (khuyên dùng)
 
