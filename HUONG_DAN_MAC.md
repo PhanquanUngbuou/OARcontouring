@@ -5,25 +5,29 @@ Model chạy bằng CPU của Mac. Ảnh CT mẫu mất khoảng 1–3 phút, ca
 
 ## 1. Cài công cụ (làm 1 lần, khoảng 15 phút)
 
-Mở **Terminal** (Cmd + Space, gõ "Terminal") rồi dán lần lượt:
-
-```bash
-# Công cụ dòng lệnh của Apple (có git). Nếu hiện cửa sổ hỏi thì bấm Install.
-xcode-select --install
-```
-
-Cài **Python 3.12** từ https://www.python.org/downloads/macos/ (bấm file .pkg, Next đến hết).
+Mở **Terminal** (Cmd + Space, gõ "Terminal"), dán **nguyên khối** dưới đây rồi Enter.
+Không cần cài Python trước: công cụ `uv` tự cài Python 3.12, không cần mật khẩu máy.
 
 ```bash
 cd ~
 git clone https://github.com/PhanquanUngbuou/OARcontouring.git
-cd OARcontouring
-python3.12 -m venv .venv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
+cd ~/OARcontouring
+uv venv --python 3.12
 source .venv/bin/activate
-pip install -e ".[model]"
+uv pip install -e ".[model]"
 ```
 
-Lệnh `pip install` tải khoảng 1–2 GB (PyTorch), cần mạng ổn định.
+- Nếu `git clone` báo đã có thư mục `OARcontouring` thì bỏ qua, chạy tiếp các dòng sau.
+- Nếu Mac hỏi cài "command line developer tools" khi chạy `git`, bấm **Install** rồi chạy lại khối lệnh.
+- Bước `uv pip install` tải khoảng 1–2 GB (PyTorch), cần mạng ổn định.
+
+**Mỗi lần mở Terminal mới** để dùng công cụ, chạy trước:
+
+```bash
+cd ~/OARcontouring && source .venv/bin/activate
+```
 
 ## 2. Chạy thử với ảnh CT mẫu (không cần dữ liệu bệnh nhân)
 
@@ -66,15 +70,15 @@ open ~/OAR_test/ca01/preview.png
 ## 5. Cập nhật bản mới
 
 ```bash
-cd ~/OARcontouring && git pull && source .venv/bin/activate && pip install -e ".[model]"
+cd ~/OARcontouring && git pull && source .venv/bin/activate && uv pip install -e ".[model]"
 ```
 
 ## Lỗi thường gặp
 
 | Lỗi | Cách xử lý |
 |---|---|
-| `command not found: oar-contour` | Chưa kích hoạt môi trường: `source ~/OARcontouring/.venv/bin/activate` |
-| `command not found: python3.12` | Chưa cài Python ở bước 1, hoặc cần mở lại Terminal |
+| `command not found: oar-contour` | Chưa kích hoạt môi trường: `cd ~/OARcontouring && source .venv/bin/activate` |
+| `command not found: uv` | Chạy `source $HOME/.local/bin/env` hoặc mở lại Terminal |
 | `Thư mục cần chứa đúng 1 series CT` | Thư mục export có nhiều series (CT + scout + ...). Giữ lại series CT mô phỏng |
 | Chạy rất lâu, máy nóng | Bình thường khi chạy CPU. Thử `--fast`, hoặc chỉ định `--site` thay vì để tự nhận diện |
 | Không tải được model | Kiểm tra mạng (một số mạng bệnh viện chặn GitHub). Thử lại bằng mạng khác |
