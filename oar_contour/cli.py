@@ -69,6 +69,13 @@ def cmd_demo(args) -> int:
     return 0
 
 
+def cmd_app(args) -> int:
+    from .app import serve
+
+    serve(Path(args.results).expanduser(), port=args.port, open_browser=not args.no_browser)
+    return 0
+
+
 def cmd_evaluate(args) -> int:
     from .evaluate import compare_rtstructs, summarize, write_csv
 
@@ -161,6 +168,12 @@ def build_parser() -> argparse.ArgumentParser:
     model_opts(sp)
     sp.set_defaults(func=cmd_demo)
 
+    sp = sub.add_parser("app", help="mở giao diện app trên trình duyệt (chạy cục bộ)")
+    sp.add_argument("--port", type=int, default=8765)
+    sp.add_argument("--results", default="~/OAR_ketqua", help="thư mục lưu kết quả các ca")
+    sp.add_argument("--no-browser", action="store_true", help="không tự mở trình duyệt")
+    sp.set_defaults(func=cmd_app)
+
     sp = sub.add_parser("evaluate", help="so sánh contour AI với contour bác sĩ trên nhiều ca")
     sp.add_argument("cases", help="thư mục, mỗi ca 1 thư mục con: ct/, ai.dcm, ref.dcm")
     sp.add_argument("--aliases", help="JSON đổi tên cấu trúc của khoa -> TG-263")
@@ -186,4 +199,5 @@ def main(argv=None) -> int:
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("pydicom").setLevel(logging.ERROR)  # cảnh báo deprecation từ rt_utils
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)  # thông báo font lần đầu
     return args.func(args)

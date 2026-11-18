@@ -1,0 +1,72 @@
+import json
+import threading
+import time
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
+
+from oar_contour.app import JobManager, make_handler
+
+from conftest import FakeSegmenter, thorax_labels
+
+
+def _req(base, path, method="GET", data=None, headers=None):
+    req = urllib.request.Request(base + path, data=data, method=method, headers=headers or {})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        body = r.read()
+        return r.status, r.headers.get("Content-Type"), body
+
+
+def test_app_upload_run_view(ct_dir, tmp_path):
+    manager = JobManager(tmp_path / "results", lambda: FakeSegmenter(thorax_labels()))
+    ref = {}
+    server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(manager, ref))
+    ref["server"] = server
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        _, ctype, html = _req(base, "/")
+        assert "text/html" in ctype and b"OAR Contour" in html
+
+        _, _, body = _req(base, "/api/jobs", "POST", json.dumps({"site": "thorax"}).encode())
+        jid = json.loads(body)["id"]
+        for f in ct_dir.iterdir():
+            _req(base, f"/api/jobs/{jid}/files?name=../../{f.name}", "PUT", f.read_bytes())
+        (tmp_path / "junk.txt").write_text("not dicom")
+        _req(base, f"/api/jobs/{jid}/files?name=junk.txt", "PUT", b"not dicom")
+        _req(base, f"/api/jobs/{jid}/start", "POST", b"")
+
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            job = json.loads(_req(base, f"/api/jobs/{jid}")[2])
+            if job["status"] in ("done", "error"):
+                break
+            time.sleep(0.2)
+        assert job["status"] == "done", job
+        assert job["n_files"] == 24
+        names = {s["name"] for s in job["result"]["structures"]}
+        assert {"Lung_L", "Heart", "Breast_R"} <= names
+        # tên file "../../x" không thoát ra ngoài thư mục ca
+        assert not list((tmp_path).glob("*.dcm"))
+
+        vol = json.loads(_req(base, f"/api/jobs/{jid}/volume")[2])
+        assert vol["sizes"] == {"axial": 24, "coronal": 48, "sagittal": 64}
+        for axis in ("axial", "coronal", "sagittal"):
+            i = vol["centers"]["Heart"][axis]
+            _, ctype, png = _req(base, f"/api/jobs/{jid}/slice?axis={axis}&i={i}&w=lung&hide=Lungs")
+            assert ctype == "image/png" and png[:4] == b"\x89PNG"
+        _, ctype, rs = _req(base, f"/api/jobs/{jid}/rtstruct")
+        assert ctype == "application/dicom" and rs[128:132] == b"DICM"
+
+        # trang web lạ không được gọi API của app
+        try:
+            _req(base, "/api/jobs", "POST", b"{}", {"Origin": "https://evil.example"})
+            raise AssertionError("phải bị chặn")
+        except urllib.error.HTTPError as e:
+            assert e.code == 403
+
+        # mở lại app: ca cũ vẫn còn trong lịch sử
+        again = JobManager(tmp_path / "results", lambda: None)
+        assert jid in again.jobs and again.jobs[jid].status == "done"
+    finally:
+        server.shutdown()

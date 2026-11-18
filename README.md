@@ -41,6 +41,17 @@ sau có thể **tự huấn luyện model bổ sung** (nnU-Net) bằng contour c
 > 🍎 **Dùng MacBook?** Xem [HUONG_DAN_MAC.md](HUONG_DAN_MAC.md): cài đặt, chạy demo với ảnh mẫu
 > công khai, xem contour bằng 3D Slicer.
 
+## App giao diện (khuyên dùng)
+
+```bash
+oar-contour app           # mở giao diện trên trình duyệt, chạy cục bộ 127.0.0.1
+bash scripts/tao_app_mac.sh   # Mac: tạo "OAR Contour.app" để bấm đúp
+```
+
+Chọn thư mục CT → Khoanh OAR → cuộn xem contour từng lát → tải RTSTRUCT.
+
+![App](docs/app-screenshot.png)
+
 ## Chạy thử nhanh (không cần dữ liệu bệnh nhân)
 
 ```bash
@@ -134,6 +145,7 @@ oar_contour/
   evaluate.py    Dice / HD95 so với contour bác sĩ
   preview.py     ảnh PNG chồng contour để xem nhanh
   demo.py        chạy thử với ảnh CT mẫu công khai
+  app.py, web/   app giao diện web cục bộ
   dicom_node.py  DICOM node nhận CT, gửi RTSTRUCT
   cli.py         lệnh oar-contour
 tests/           test với phantom giả (không có dữ liệu bệnh nhân)

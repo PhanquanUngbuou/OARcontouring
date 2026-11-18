@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OAR Contour</title>
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --ink: #1c2330; --muted: #667085; --line: #e3e6eb;
+  --accent: #0f6fde; --accent-ink: #ffffff; --warn-bg: #fff4e5; --warn-ink: #8a4b00;
+  --ok: #12805c; --err: #c4320a; --viewer: #0b0d10;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111418; --panel: #1a1e24; --ink: #e8eaee; --muted: #98a2b3; --line: #2b313a;
+    --accent: #4c9cff; --accent-ink: #0b1220; --warn-bg: #3a2a10; --warn-ink: #ffcf8a;
+    --ok: #4cc79a; --err: #ff8a65; --viewer: #000;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--ink); }
+header { display: flex; align-items: center; gap: 12px; padding: 10px 18px; background: var(--panel);
+  border-bottom: 1px solid var(--line); }
+header h1 { font-size: 16px; margin: 0; }
+header .tag { font-size: 12px; color: var(--warn-ink); background: var(--warn-bg); padding: 2px 8px; border-radius: 999px; }
+header .sp { flex: 1; }
+main { display: grid; grid-template-columns: 320px 1fr; gap: 14px; padding: 14px; height: calc(100vh - 53px); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+aside { display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
+label.f { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+select, button { font: inherit; }
+select { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--ink); }
+button { padding: 8px 12px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button:disabled { opacity: .5; cursor: default; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.full { width: 100%; }
+.muted { color: var(--muted); font-size: 12px; }
+.pick { border: 1.5px dashed var(--line); border-radius: 9px; padding: 14px; text-align: center; cursor: pointer; }
+.pick:hover { border-color: var(--accent); }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+.bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.jobs { list-style: none; padding: 0; margin: 0; }
+.jobs li { padding: 8px; border-radius: 7px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
+.jobs li:hover, .jobs li.sel { background: var(--bg); }
+.st-done { color: var(--ok); } .st-error { color: var(--err); } .st-running, .st-queued { color: var(--accent); }
+section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-height: 0; }
+.stage { background: var(--viewer); border-radius: 10px; position: relative; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.toolbar { display: flex; gap: 6px; padding: 8px; align-items: center; flex-wrap: wrap; background: rgba(255,255,255,.04); }
+.toolbar button { background: transparent; color: #cfd6e0; border-color: #343b46; padding: 5px 10px; }
+.toolbar button.on { background: #2b3644; color: #fff; border-color: #4c9cff; }
+.toolbar .sp { flex: 1; }
+.canvas { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 6px; }
+.canvas img { max-width: 100%; max-height: 100%; image-rendering: pixelated; user-select: none; }
+.slider { display: flex; gap: 10px; align-items: center; padding: 8px 12px; color: #cfd6e0; font-size: 12px; }
+.slider input { flex: 1; }
+.empty { color: #8b95a5; text-align: center; padding: 40px; }
+.structs { overflow: auto; }
+.structs .s { display: flex; align-items: center; gap: 8px; padding: 5px 4px; border-radius: 6px; }
+.structs .s:hover { background: var(--bg); }
+.structs .chip { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.structs .n { flex: 1; cursor: pointer; }
+.structs .cc { color: var(--muted); font-size: 12px; }
+.note { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-top: 10px; }
+.err { color: var(--err); white-space: pre-wrap; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } section.view { grid-template-columns: 1fr; } .stage { min-height: 70vh; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>OAR Contour</h1>
+  <span class="tag">Bản nháp AI · bác sĩ phải duyệt</span>
+  <span class="sp"></span>
+  <span class="muted">Chạy trên máy này · ảnh không gửi ra Internet</span>
+  <button id="quit" title="Tắt app">Thoát</button>
+</header>
+<main>
+  <aside>
+    <div class="card">
+      <h2>Ca mới</h2>
+      <div class="pick" id="pick">
+        <div><b>Chọn thư mục CT</b></div>
+        <div class="muted">Thư mục DICOM export từ Monaco / PACS. Nhiều series cũng được, app tự lấy series CT.</div>
+      </div>
+      <input type="file" id="files" webkitdirectory multiple hidden>
+      <div id="picked" class="muted" style="margin-top:6px"></div>
+      <label class="f" for="site">Vùng giải phẫu</label>
+      <select id="site">
+        <option value="auto">Tự nhận diện</option>
+        <option value="thorax">Ngực / vú</option>
+        <option value="abdomen">Bụng</option>
+        <option value="pelvis">Tiểu khung</option>
+        <option value="headneck">Đầu cổ</option>
+      </select>
+      <label class="f"><input type="checkbox" id="fast"> Chế độ nhanh (kém chính xác hơn, chỉ để thử)</label>
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="run" disabled>Khoanh OAR</button>
+        <button id="demo" title="Ảnh CT mẫu công khai, không phải dữ liệu bệnh nhân">Chạy ảnh mẫu</button>
+      </div>
+      <div id="up" hidden><div class="bar"><div id="upbar"></div></div><div class="muted" id="uptext"></div></div>
+    </div>
+    <div class="card">
+      <h2>Các ca đã chạy</h2>
+      <ul class="jobs" id="jobs"><li class="muted">Chưa có ca nào</li></ul>
+    </div>
+  </aside>
+
+  <section class="view">
+    <div class="stage">
+      <div class="toolbar">
+        <button data-axis="axial" class="on">Axial</button>
+        <button data-axis="coronal">Coronal</button>
+        <button data-axis="sagittal">Sagittal</button>
+        <span class="sp"></span>
+        <button data-w="soft" class="on">Phần mềm</button>
+        <button data-w="lung">Phổi</button>
+        <button data-w="bone">Xương</button>
+      </div>
+      <div class="canvas" id="canvas"><div class="empty" id="empty">Chọn thư mục CT hoặc bấm “Chạy ảnh mẫu” để bắt đầu.</div><img id="img" alt="" hidden></div>
+      <div class="slider"><span id="sl">–</span><input type="range" id="slice" min="0" max="0" value="0" disabled><span class="muted" style="color:#8b95a5">Cuộn chuột / ↑↓ để đổi lát</span></div>
+    </div>
+    <div class="card structs">
+      <h2>Cấu trúc</h2>
+      <div id="status" class="muted">–</div>
+      <div class="row" id="actions" style="margin:10px 0" hidden>
+        <button class="primary full" id="dl">Tải RTSTRUCT (.dcm)</button>
+        <button class="full" id="reveal">Mở thư mục kết quả</button>
+      </div>
+      <div id="list"></div>
+      <div id="extra"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const api = async (path, opts = {}) => {
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+};
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtTime = (s) => (s >= 60 ? `${Math.floor(s / 60)} phút ${s % 60}s` : `${s}s`);
+
+let picked = [];
+let current = null;          // id ca đang xem
+let vol = null;              // thông tin volume của ca đang xem
+const view = { axis: "axial", w: "soft", idx: { axial: 0, coronal: 0, sagittal: 0 }, hidden: new Set() };
+
+// ---------------- chọn file & tải lên
+$("pick").onclick = () => $("files").click();
+$("files").onchange = (e) => {
+  picked = [...e.target.files].filter((f) => !f.name.startsWith("."));
+  const mb = picked.reduce((a, f) => a + f.size, 0) / 1e6;
+  $("picked").textContent = picked.length ? `${picked.length} file · ${mb.toFixed(0)} MB` : "";
+  $("run").disabled = !picked.length;
+};
+
+$("run").onclick = async () => {
+  $("run").disabled = true; $("demo").disabled = true;
+  try {
+    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ site: $("site").value, fast: $("fast").checked }) });
+    $("up").hidden = false;
+    let done = 0;
+    const queue = [...picked];
+    const worker = async () => {
+      while (queue.length) {
+        const f = queue.shift();
+        await api(`/api/jobs/${job.id}/files?name=${encodeURIComponent(f.name)}`, { method: "PUT", body: f });
+        done++;
+        $("upbar").style.width = `${(100 * done) / picked.length}%`;
+        $("uptext").textContent = `Đang nạp ${done}/${picked.length} file`;
+      }
+    };
+    await Promise.all(Array.from({ length: 6 }, worker));
+    await api(`/api/jobs/${job.id}/start`, { method: "POST" });
+    $("uptext").textContent = "Đã nạp xong, đang khoanh…";
+    select(job.id);
+  } catch (e) {
+    alert("Lỗi: " + e.message);
+  } finally {
+    $("run").disabled = !picked.length; $("demo").disabled = false;
+    setTimeout(() => ($("up").hidden = true), 1500);
+  }
+};
+
+$("demo").onclick = async () => {
+  try {
+    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ site: "auto", fast: $("fast").checked, demo: true }) });
+    select(job.id);
+  } catch (e) { alert("Lỗi: " + e.message); }
+};
+
+$("quit").onclick = async () => {
+  if (!confirm("Tắt app OAR Contour?")) return;
+  await api("/api/quit", { method: "POST" }).catch(() => {});
+  document.body.innerHTML = '<div class="empty">Đã tắt app. Có thể đóng tab này.</div>';
+};
+
+// ---------------- danh sách ca
+const labelSite = { auto: "Tự nhận diện", thorax: "Ngực", abdomen: "Bụng", pelvis: "Tiểu khung", headneck: "Đầu cổ" };
+const labelStatus = { uploading: "đang nạp", queued: "chờ", running: "đang chạy", done: "xong", error: "lỗi" };
+async function refreshJobs() {
+  const jobs = await api("/api/jobs").catch(() => null);
+  if (!jobs) return;
+  $("jobs").innerHTML = jobs.length ? "" : '<li class="muted">Chưa có ca nào</li>';
+  for (const j of jobs) {
+    const li = document.createElement("li");
+    if (j.id === current) li.className = "sel";
+    const when = j.id.slice(0, 13).replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, "$3/$2 $4:$5");
+    const sites = (j.result.sites || [j.site]).map((s) => labelSite[s] || s).join(", ");
+    li.innerHTML = `<span>${esc(when)} · ${esc(j.demo ? "Ảnh mẫu" : sites)}</span><span class="st-${j.status}">${labelStatus[j.status] || j.status}</span>`;
+    li.onclick = () => select(j.id);
+    $("jobs").appendChild(li);
+  }
+}
+
+// ---------------- theo dõi ca & hiển thị
+let poll = null;
+async function select(id) {
+  current = id; vol = null; view.hidden.clear();
+  clearInterval(poll);
+  $("img").hidden = true; $("empty").hidden = false; $("slice").disabled = true;
+  $("list").innerHTML = ""; $("extra").innerHTML = ""; $("actions").hidden = true;
+  refreshJobs();
+  const tick = async () => {
+    const j = await api(`/api/jobs/${id}`).catch(() => null);
+    if (!j || id !== current) return;
+    if (j.status === "done") { clearInterval(poll); showResult(j); refreshJobs(); return; }
+    if (j.status === "error") {
+      clearInterval(poll); refreshJobs();
+      $("status").innerHTML = `<span class="err">Lỗi: ${esc(j.error)}</span>`;
+      $("empty").textContent = "Ca này bị lỗi. Xem thông báo bên phải.";
+      return;
+    }
+    $("status").textContent = `${j.message || labelStatus[j.status]} · ${fmtTime(j.elapsed)}`;
+    $("empty").textContent = `${j.message || "Đang xử lý"}… (${fmtTime(j.elapsed)}). Lần đầu chạy sẽ tải model, có thể mất vài phút.`;
+  };
+  await tick();
+  poll = setInterval(tick, 1500);
+}
+
+async function showResult(j) {
+  vol = await api(`/api/jobs/${j.id}/volume`);
+  const r = j.result;
+  $("status").innerHTML = `${r.structures.length} cấu trúc · ${j.n_files} lát CT · ${esc((r.sites || []).map((s) => labelSite[s] || s).join(", "))}${j.elapsed ? " · " + fmtTime(j.elapsed) : ""}`;
+  $("actions").hidden = false;
+  const list = $("list");
+  list.innerHTML = "";
+  for (const s of r.structures) {
+    const c = vol.colors[s.name] || [200, 200, 200];
+    const row = document.createElement("div");
+    row.className = "s";
+    row.innerHTML = `<input type="checkbox" checked><span class="chip" style="background:rgb(${c.join(",")})"></span><span class="n" title="Bấm để nhảy tới cơ quan">${esc(s.name)}</span><span class="cc">${s.cc} cc</span>`;
+    row.querySelector("input").onchange = (e) => { e.target.checked ? view.hidden.delete(s.name) : view.hidden.add(s.name); draw(); };
+    row.querySelector(".n").onclick = () => { const ctr = vol.centers[s.name]; if (ctr) { view.idx = { ...ctr }; syncSlider(); draw(); } };
+    list.appendChild(row);
+  }
+  let extra = "";
+  if (r.not_covered && r.not_covered.length) extra += `<div class="note"><b>Bác sĩ tự vẽ (model chưa hỗ trợ):</b><br>${r.not_covered.map(esc).join(", ")}</div>`;
+  const notes = Object.entries(r.notes || {});
+  if (notes.length) extra += `<div class="note"><b>Lưu ý khi duyệt:</b><br>${notes.map(([n, t]) => `<b>${esc(n)}</b>: ${esc(t)}`).join("<br>")}</div>`;
+  $("extra").innerHTML = extra;
+  for (const a of ["axial", "coronal", "sagittal"]) view.idx[a] = Math.floor(vol.sizes[a] / 2);
+  const first = r.structures[0] && vol.centers[r.structures[0].name];
+  if (first) view.idx = { ...first };
+  $("empty").hidden = true; $("img").hidden = false; $("slice").disabled = false;
+  syncSlider(); draw();
+}
+
+function syncSlider() {
+  if (!vol) return;
+  const n = vol.sizes[view.axis];
+  $("slice").max = n - 1;
+  $("slice").value = view.idx[view.axis];
+  $("sl").textContent = `${view.idx[view.axis] + 1}/${n}`;
+}
+
+let pending = false, again = false;
+async function draw() {
+  if (!vol || !current) return;
+  if (pending) { again = true; return; }
+  pending = true;
+  const u = `/api/jobs/${current}/slice?axis=${view.axis}&i=${view.idx[view.axis]}&w=${view.w}&hide=${encodeURIComponent([...view.hidden].join(","))}`;
+  const img = $("img");
+  await new Promise((res) => { img.onload = img.onerror = res; img.src = u; });
+  pending = false;
+  if (again) { again = false; draw(); }
+}
+
+$("slice").oninput = (e) => { view.idx[view.axis] = +e.target.value; $("sl").textContent = `${+e.target.value + 1}/${vol.sizes[view.axis]}`; draw(); };
+const step = (d) => { if (!vol) return; const n = vol.sizes[view.axis]; view.idx[view.axis] = Math.max(0, Math.min(n - 1, view.idx[view.axis] + d)); syncSlider(); draw(); };
+$("canvas").addEventListener("wheel", (e) => { e.preventDefault(); step(e.deltaY > 0 ? -1 : 1); }, { passive: false });
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" && e.target.type !== "range") return;
+  if (e.key === "ArrowUp") { e.preventDefault(); step(1); }
+  if (e.key === "ArrowDown") { e.preventDefault(); step(-1); }
+});
+document.querySelectorAll("[data-axis]").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll("[data-axis]").forEach((x) => x.classList.toggle("on", x === b));
+  view.axis = b.dataset.axis; syncSlider(); draw();
+}));
+document.querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll("[data-w]").forEach((x) => x.classList.toggle("on", x === b));
+  view.w = b.dataset.w; draw();
+}));
+$("dl").onclick = () => { if (current) location.href = `/api/jobs/${current}/rtstruct`; };
+$("reveal").onclick = () => current && api(`/api/jobs/${current}/reveal`, { method: "POST" }).catch(() => {});
+
+refreshJobs().then(() => {
+  const first = document.querySelector("#jobs li:not(.muted)");
+  if (first) first.click();
+});
+setInterval(refreshJobs, 5000);
+</script>
+</body>
+</html>

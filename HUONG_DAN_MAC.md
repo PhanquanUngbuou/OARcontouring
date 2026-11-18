@@ -29,19 +29,36 @@ uv pip install -e ".[model]"
 cd ~/OARcontouring && source .venv/bin/activate
 ```
 
-## 2. Chạy thử với ảnh CT mẫu (không cần dữ liệu bệnh nhân)
+## 2. Tạo app "OAR Contour" (làm 1 lần)
 
 ```bash
-cd ~/OARcontouring
-source .venv/bin/activate
-oar-contour demo
-open demo/preview.png
+cd ~/OARcontouring && git pull && source .venv/bin/activate && uv pip install -e ".[model]"
+bash scripts/tao_app_mac.sh
 ```
 
-Lệnh `demo` tải ảnh CT mẫu công khai (bụng–chậu), khoanh 15 cơ quan và mở ảnh kết quả.
-Lần đầu sẽ tải thêm model khoảng 135 MB. Thêm `--fast` nếu muốn nhanh hơn (kém chính xác hơn).
+Finder sẽ mở ra chỗ có **OAR Contour.app**. Kéo nó vào **Dock** cho tiện.
+Từ giờ **không cần Terminal nữa**.
 
-## 3. Chạy với một ca của khoa
+## 3. Dùng app hằng ngày
+
+![Giao diện app](docs/app-screenshot.png)
+
+1. Bấm **OAR Contour** trên Dock. Trình duyệt tự mở giao diện (lần đầu chờ vài giây).
+2. Bấm **Chọn thư mục CT** → chọn thư mục DICOM export từ Monaco/PACS.
+   Thư mục có nhiều series cũng được, app tự lấy series CT nhiều lát nhất.
+3. Chọn **Vùng giải phẫu** (hoặc để Tự nhận diện) → bấm **Khoanh OAR**.
+4. Chờ xong (Mac chạy CPU: khoảng 2–15 phút tuỳ vùng). Có thể làm việc khác trong lúc chờ.
+5. Xem kết quả:
+   - **Cuộn chuột** hoặc phím ↑↓ để đổi lát; nút **Axial / Coronal / Sagittal** để đổi mặt cắt.
+   - **Phần mềm / Phổi / Xương**: đổi cửa sổ hiển thị.
+   - **Bấm tên cơ quan** để nhảy tới lát giữa cơ quan đó; bỏ tích để ẩn.
+6. **Tải RTSTRUCT (.dcm)** để đưa vào Monaco (cùng bộ CT gốc), hoặc **Mở thư mục kết quả**.
+7. Xong việc bấm **Thoát** (góc trên phải).
+
+- **Chạy ảnh mẫu**: thử app với ảnh CT công khai, không cần dữ liệu bệnh nhân.
+- Mọi ca được lưu trong thư mục `~/OAR_ketqua` và hiện ở mục "Các ca đã chạy" để mở lại.
+
+## 4. (Tuỳ chọn) Chạy bằng dòng lệnh
 
 1. Từ Monaco hoặc PACS, export **1 series CT mô phỏng** (DICOM) vào một thư mục, ví dụ
    `~/OAR_test/ca01/ct`. Nên dùng ca cũ đã ẩn danh. Thư mục chỉ chứa đúng 1 series.
@@ -54,9 +71,9 @@ oar-contour run ~/OAR_test/ca01/ct --site thorax \
 open ~/OAR_test/ca01/preview.png
 ```
 
-## 4. Xem contour chi tiết bằng 3D Slicer (miễn phí)
+## 5. (Tuỳ chọn) Xem 3D bằng 3D Slicer (miễn phí)
 
-Ảnh `preview.png` chỉ để xem nhanh 5 lát cắt. Muốn cuộn từng lát và xem 3D:
+App đã xem được từng lát. Slicer chỉ cần khi muốn xem 3D hoặc chỉnh contour:
 
 1. Tải **3D Slicer** bản Stable tại https://download.slicer.org (chọn macOS), kéo vào Applications.
    Lần đầu mở nếu macOS chặn: chuột phải vào Slicer → Open.
@@ -67,16 +84,20 @@ open ~/OAR_test/ca01/preview.png
 5. Contour hiện màu trên 3 mặt cắt. Cuộn chuột để chuyển lát. Mở module **Data** để bật/tắt từng
    cơ quan. Bấm biểu tượng mắt ở dòng segmentation, chọn "Show 3D" để xem 3D.
 
-## 5. Cập nhật bản mới
+## 6. Cập nhật bản mới
 
 ```bash
 cd ~/OARcontouring && git pull && source .venv/bin/activate && uv pip install -e ".[model]"
 ```
 
+App trên Dock tự dùng bản mới, không cần tạo lại.
+
 ## Lỗi thường gặp
 
 | Lỗi | Cách xử lý |
 |---|---|
+| Bấm app không thấy gì | Chờ 5–10 giây. Vẫn không có thì mở Safari, vào `http://127.0.0.1:8765`. Nhật ký lỗi: `~/OAR_ketqua/app.log` |
+| macOS báo không mở được app | Chuột phải vào app → Open → Open |
 | `command not found: oar-contour` | Chưa kích hoạt môi trường: `cd ~/OARcontouring && source .venv/bin/activate` |
 | `command not found: uv` | Chạy `source $HOME/.local/bin/env` hoặc mở lại Terminal |
 | `Thư mục cần chứa đúng 1 series CT` | Thư mục export có nhiều series (CT + scout + ...). Giữ lại series CT mô phỏng |

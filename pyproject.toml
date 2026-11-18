@@ -28,5 +28,8 @@ oar-contour = "oar_contour.cli:main"
 [tool.setuptools]
 packages = ["oar_contour"]
 
+[tool.setuptools.package-data]
+oar_contour = ["web/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

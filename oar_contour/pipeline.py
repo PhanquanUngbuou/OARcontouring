@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import SimpleITK as sitk
@@ -158,11 +159,15 @@ def run_pipeline(
     segmenter: Segmenter,
     site: str = "auto",
     min_voxels: int = MIN_VOXELS_DEFAULT,
+    progress: Callable[[str], None] | None = None,
 ) -> Report:
+    say = progress or (lambda msg: None)
+    say("Đọc ảnh CT")
     image = load_ct_series(dicom_dir)
     labelmaps: dict[str, np.ndarray] = {}
     class_maps: dict[str, dict[int, str]] = {}
 
+    say("Chạy model: cơ quan toàn thân (task total)")
     labelmaps["total"], class_maps["total"] = segmenter.run(image, "total")
     if site == "auto":
         sites = detect_regions(labelmaps["total"], class_maps["total"])
@@ -174,12 +179,14 @@ def run_pipeline(
     structures = structures_for(sites)
     for task in tasks_for(structures):
         if task not in labelmaps:
+            say(f"Chạy model bổ sung: {task}")
             labelmaps[task], class_maps[task] = segmenter.run(image, task)
 
     masks, empty = build_masks(structures, labelmaps, class_maps, image, min_voxels)
     if not masks:
         raise RuntimeError("Không tạo được cấu trúc nào.")
     colors = {s.name: s.color for s in structures}
+    say("Ghi file RTSTRUCT")
     write_rtstruct(dicom_dir, image, masks, colors, out_path)
 
     voxel_cc = float(np.prod(image.GetSpacing())) / 1000.0

@@ -72,6 +72,8 @@ class TotalSegmentatorRunner:
 
         setup_totalseg()
         set_config_key("send_usage_stats", False)
+        # Đã tắt thống kê nên ẩn luôn thông báo "sends anonymous usage statistics"
+        set_config_key("statistics_disclaimer_shown", True)
         self._commercial = set(commercial_models)
         self._ready = True
 
