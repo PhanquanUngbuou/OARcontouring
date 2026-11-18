@@ -29,6 +29,9 @@ import numpy as np
 
 log = logging.getLogger(__name__)
 
+DEVICE_LABEL = {"gpu": "GPU NVIDIA", "mps": "chip đồ hoạ Apple", "cpu": "CPU",
+                "cpu_fallback": "CPU (chip đồ hoạ lỗi, đã chuyển sang CPU)"}
+
 WEB_DIR = Path(__file__).parent / "web"
 DEFAULT_PORT = 8765
 WINDOWS = {"soft": (40, 400), "lung": (-600, 1500), "bone": (400, 1800)}
@@ -155,6 +158,9 @@ class Job:
     site: str = "auto"
     fast: bool = False
     demo: bool = False
+    device: str = "auto"  # lựa chọn: auto | cpu
+    device_used: str = ""  # thực tế: gpu | mps | cpu (+ ghi chú nếu chuyển CPU)
+    saved_elapsed: int = 0
     status: str = "uploading"  # uploading | queued | running | done | error
     message: str = ""
     started: float = 0.0
@@ -173,9 +179,10 @@ class Job:
         return self.dir / "RS_AI_OAR.dcm"
 
     def public(self) -> dict:
-        elapsed = (self.finished or time.time()) - self.started if self.started else 0
+        elapsed = (self.finished or time.time()) - self.started if self.started else self.saved_elapsed
         return {"id": self.id, "status": self.status, "message": self.message, "site": self.site,
-                "fast": self.fast, "demo": self.demo, "elapsed": round(elapsed), "n_files": self.n_files,
+                "fast": self.fast, "demo": self.demo, "elapsed": round(elapsed),
+                "device": self.device, "device_used": self.device_used, "n_files": self.n_files,
                 "result": self.result, "error": self.error, "folder": str(self.dir)}
 
 
@@ -206,11 +213,12 @@ def pick_ct_series(upload_dir: Path, ct_dir: Path) -> tuple[int, int]:
 
 class JobManager:
     def __init__(self, root: Path, segmenter_factory):
+        """segmenter_factory(device) -> Segmenter; device là "gpu" | "mps" | "cpu"."""
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
         self.jobs: dict[str, Job] = {}
         self._segmenter_factory = segmenter_factory
-        self._segmenter = None
+        self._segmenters: dict[str, object] = {}
         self._run_lock = threading.Lock()  # mỗi lúc chạy 1 ca (nặng CPU/GPU)
         self._load_history()
 
@@ -220,15 +228,18 @@ class JobManager:
                 data = json.loads(meta.read_text(encoding="utf-8"))
                 job = Job(id=data["id"], dir=meta.parent, site=data.get("site", "auto"),
                           fast=data.get("fast", False), demo=data.get("demo", False), status="done",
-                          message="Hoàn tất", result=data.get("result", {}), n_files=data.get("n_files", 0))
+                          message="Hoàn tất", result=data.get("result", {}), n_files=data.get("n_files", 0),
+                          device=data.get("device", "auto"), device_used=data.get("device_used", ""),
+                          saved_elapsed=int(data.get("elapsed", 0)))
                 if job.rtstruct.exists() and job.ct_dir.exists():
                     self.jobs[job.id] = job
             except Exception:
                 continue
 
-    def create(self, site: str, fast: bool, demo: bool) -> Job:
+    def create(self, site: str, fast: bool, demo: bool, device: str = "auto") -> Job:
         jid = datetime.now().strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
-        job = Job(id=jid, dir=self.root / jid, site=site, fast=fast, demo=demo)
+        job = Job(id=jid, dir=self.root / jid, site=site, fast=fast, demo=demo,
+                  device=device if device in ("auto", "cpu") else "auto")
         (job.dir / "upload").mkdir(parents=True)
         self.jobs[jid] = job
         return job
@@ -259,12 +270,19 @@ class JobManager:
                     job.n_files = n
                     if skipped:
                         say(f"Dùng series CT {n} lát, bỏ qua {skipped} series khác")
-                if self._segmenter is None:
-                    self._segmenter = self._segmenter_factory()
-                self._segmenter.fast = job.fast
                 from .pipeline import run_pipeline
+                from .segment import pick_device
 
-                report = run_pipeline(job.ct_dir, job.rtstruct, self._segmenter, site=job.site, progress=say)
+                dev = pick_device() if job.device == "auto" else "cpu"
+                seg = self._segmenters.get(dev)
+                if seg is None:
+                    seg = self._segmenters[dev] = self._segmenter_factory(dev)
+                seg.fast = job.fast
+                job.device_used = getattr(seg, "device", dev)
+                report = run_pipeline(job.ct_dir, job.rtstruct, seg, site=job.site,
+                                      progress=lambda m: say(f"{m} ({DEVICE_LABEL.get(job.device_used, job.device_used)})"))
+                if getattr(seg, "fell_back", False) and dev == "mps":
+                    job.device_used = "cpu_fallback"
                 job.result = {
                     "sites": report.sites,
                     "structures": [{"name": n, "cc": round(v, 1)} for n, v in report.written.items()],
@@ -277,7 +295,9 @@ class JobManager:
                 job.status, job.message = "done", "Hoàn tất"
                 (job.dir / "job.json").write_text(json.dumps(
                     {"id": job.id, "site": job.site, "fast": job.fast, "demo": job.demo,
-                     "n_files": job.n_files, "result": job.result}, ensure_ascii=False), encoding="utf-8")
+                     "n_files": job.n_files, "result": job.result, "device": job.device,
+                     "device_used": job.device_used, "elapsed": round(time.time() - job.started)},
+                    ensure_ascii=False), encoding="utf-8")
             except Exception as e:
                 log.error("Ca %s lỗi:\n%s", job.id, traceback.format_exc())
                 job.status, job.error = "error", str(e) or e.__class__.__name__
@@ -389,7 +409,8 @@ def make_handler(manager: JobManager, server_ref: dict):
                         structures_for(site.split(","))
                     except ValueError as e:
                         return self._json({"error": str(e)}, 400)
-                job = manager.create(site, bool(data.get("fast")), bool(data.get("demo")))
+                job = manager.create(site, bool(data.get("fast")), bool(data.get("demo")),
+                                     str(data.get("device", "auto")))
                 if job.demo:
                     manager.start(job)
                 return self._json(job.public())
@@ -440,13 +461,7 @@ def serve(root: Path, port: int = DEFAULT_PORT, open_browser: bool = True, segme
     if segmenter_factory is None:
         from .segment import TotalSegmentatorRunner
 
-        def segmenter_factory():
-            try:
-                import torch
-
-                device = "gpu" if torch.cuda.is_available() else "cpu"
-            except Exception:
-                device = "cpu"
+        def segmenter_factory(device):
             return TotalSegmentatorRunner(device=device)
 
     url = f"http://127.0.0.1:{port}/"

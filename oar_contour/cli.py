@@ -114,15 +114,9 @@ def cmd_serve(args) -> int:
 
 
 def _default_device() -> str:
-    """GPU NVIDIA nếu có, còn lại CPU (kể cả Mac chip Apple)."""
-    try:
-        import torch
+    from .segment import pick_device
 
-        if torch.cuda.is_available():
-            return "gpu"
-    except Exception:
-        pass
-    return "cpu"
+    return pick_device()
 
 
 def _parse_dest(text: str) -> tuple[str, int, str]:
@@ -140,7 +134,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     def model_opts(sp):
-        sp.add_argument("--device", default=None, help="gpu | cpu | mps (tự chọn nếu bỏ trống)")
+        sp.add_argument("--device", default=None, help="gpu | mps (chip đồ hoạ Mac) | cpu; bỏ trống = tự chọn")
         sp.add_argument("--fast", action="store_true", help="model 3mm cho task total (nhanh, kém chính xác hơn)")
         sp.add_argument("--site", default="auto",
                         help="auto | thorax | abdomen | pelvis | headneck (nhiều vùng: thorax,abdomen)")

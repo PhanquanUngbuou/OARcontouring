@@ -9,6 +9,7 @@ huấn luyện bằng nnU-Net) mà không phải sửa phần còn lại.
 from __future__ import annotations
 
 import logging
+import os
 import tempfile
 from pathlib import Path
 from typing import Protocol
@@ -52,6 +53,23 @@ def resample_labels_to(label_img: sitk.Image, reference: sitk.Image) -> np.ndarr
     return sitk.GetArrayFromImage(label_img).astype(np.int16)
 
 
+def pick_device() -> str:
+    """GPU NVIDIA -> "gpu"; Mac chip Apple có chip đồ hoạ -> "mps"; còn lại "cpu"."""
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return "gpu"
+        if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+            return "mps"
+    except Exception:
+        pass
+    return "cpu"
+
+
+DEVICE_LABEL = {"gpu": "GPU NVIDIA", "mps": "chip đồ hoạ Apple", "cpu": "CPU"}
+
+
 class TotalSegmentatorRunner:
     """Chạy TotalSegmentator (chỉ các task miễn phí) trên máy nội bộ.
 
@@ -60,8 +78,12 @@ class TotalSegmentatorRunner:
     """
 
     def __init__(self, device: str = "gpu", fast: bool = False):
+        if device == "mps":
+            # phép tính nào chip Apple chưa hỗ trợ thì PyTorch tự làm bằng CPU
+            os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
         self.device = device
         self.fast = fast
+        self.fell_back = False  # True nếu chip đồ hoạ lỗi và đã chuyển sang CPU
         self._ready = False
 
     def _setup(self):
@@ -91,10 +113,21 @@ class TotalSegmentatorRunner:
             seg_path = Path(tmp) / f"{task}.nii.gz"
             sitk.WriteImage(image, str(ct_path))
             log.info("Chạy TotalSegmentator task=%s fast=%s device=%s", task, fast, self.device)
-            totalsegmentator(
-                input=ct_path, output=seg_path, task=task, ml=True,
-                fast=fast, device=self.device, quiet=True,
-            )
+            try:
+                totalsegmentator(
+                    input=ct_path, output=seg_path, task=task, ml=True,
+                    fast=fast, device=self.device, quiet=True,
+                )
+            except Exception:
+                if self.device != "mps":
+                    raise
+                # chip đồ hoạ Apple lỗi -> chạy lại bằng CPU, các lần sau dùng luôn CPU
+                log.warning("Chip đồ hoạ (mps) lỗi ở task %s, chạy lại bằng CPU", task, exc_info=True)
+                self.device, self.fell_back = "cpu", True
+                totalsegmentator(
+                    input=ct_path, output=seg_path, task=task, ml=True,
+                    fast=fast, device="cpu", quiet=True,
+                )
             labels = sitk.ReadImage(str(seg_path))
             arr = resample_labels_to(labels, image)
         return arr, dict(class_map[task])

@@ -18,7 +18,7 @@ def _req(base, path, method="GET", data=None, headers=None):
 
 
 def test_app_upload_run_view(ct_dir, tmp_path):
-    manager = JobManager(tmp_path / "results", lambda: FakeSegmenter(thorax_labels()))
+    manager = JobManager(tmp_path / "results", lambda device: FakeSegmenter(thorax_labels()))
     ref = {}
     server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(manager, ref))
     ref["server"] = server
@@ -66,7 +66,33 @@ def test_app_upload_run_view(ct_dir, tmp_path):
             assert e.code == 403
 
         # mở lại app: ca cũ vẫn còn trong lịch sử
-        again = JobManager(tmp_path / "results", lambda: None)
+        again = JobManager(tmp_path / "results", lambda device: None)
         assert jid in again.jobs and again.jobs[jid].status == "done"
     finally:
         server.shutdown()
+
+
+def test_mps_failure_falls_back_to_cpu(monkeypatch, ct_dir):
+    pytest = __import__("pytest")
+    api = pytest.importorskip("totalsegmentator.python_api")
+    import SimpleITK as sitk
+    from oar_contour import segment
+
+    calls = []
+
+    def fake_ts(input, output, task, device, **kw):
+        calls.append(device)
+        if device == "mps":
+            raise RuntimeError("MPS: operator not implemented")
+        img = sitk.ReadImage(str(input))
+        sitk.WriteImage(sitk.Image(img.GetSize(), sitk.sitkUInt8) * 0 + 0, str(output))
+
+    monkeypatch.setattr(api, "totalsegmentator", fake_ts)
+    monkeypatch.setattr(segment.TotalSegmentatorRunner, "_setup",
+                        lambda self: setattr(self, "_commercial", set()))
+    runner = segment.TotalSegmentatorRunner(device="mps")
+    image = segment.load_ct_series(ct_dir)
+    runner.run(image, "total")
+    runner.run(image, "total")
+    assert calls == ["mps", "cpu", "cpu"]
+    assert runner.fell_back and runner.device == "cpu"

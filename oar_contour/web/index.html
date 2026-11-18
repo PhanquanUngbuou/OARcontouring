@@ -95,6 +95,11 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
         <option value="pelvis">Tiểu khung</option>
         <option value="headneck">Đầu cổ</option>
       </select>
+      <label class="f" for="device">Bộ xử lý</label>
+      <select id="device">
+        <option value="auto">Tự động (chip đồ hoạ nếu có)</option>
+        <option value="cpu">Chỉ dùng CPU</option>
+      </select>
       <label class="f"><input type="checkbox" id="fast"> Chế độ nhanh (kém chính xác hơn, chỉ để thử)</label>
       <div class="row" style="margin-top:12px">
         <button class="primary" id="run" disabled>Khoanh OAR</button>
@@ -163,7 +168,7 @@ $("files").onchange = (e) => {
 $("run").onclick = async () => {
   $("run").disabled = true; $("demo").disabled = true;
   try {
-    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ site: $("site").value, fast: $("fast").checked }) });
+    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ site: $("site").value, fast: $("fast").checked, device: $("device").value }) });
     $("up").hidden = false;
     let done = 0;
     const queue = [...picked];
@@ -190,7 +195,7 @@ $("run").onclick = async () => {
 
 $("demo").onclick = async () => {
   try {
-    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ site: "auto", fast: $("fast").checked, demo: true }) });
+    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ site: "auto", fast: $("fast").checked, demo: true, device: $("device").value }) });
     select(job.id);
   } catch (e) { alert("Lỗi: " + e.message); }
 };
@@ -202,6 +207,7 @@ $("quit").onclick = async () => {
 };
 
 // ---------------- danh sách ca
+const labelDevice = { gpu: "GPU NVIDIA", mps: "chip đồ hoạ", cpu: "CPU", cpu_fallback: "CPU (chip đồ hoạ lỗi)" };
 const labelSite = { auto: "Tự nhận diện", thorax: "Ngực", abdomen: "Bụng", pelvis: "Tiểu khung", headneck: "Đầu cổ" };
 const labelStatus = { uploading: "đang nạp", queued: "chờ", running: "đang chạy", done: "xong", error: "lỗi" };
 async function refreshJobs() {
@@ -213,7 +219,8 @@ async function refreshJobs() {
     if (j.id === current) li.className = "sel";
     const when = j.id.slice(0, 13).replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, "$3/$2 $4:$5");
     const sites = (j.result.sites || [j.site]).map((s) => labelSite[s] || s).join(", ");
-    li.innerHTML = `<span>${esc(when)} · ${esc(j.demo ? "Ảnh mẫu" : sites)}</span><span class="st-${j.status}">${labelStatus[j.status] || j.status}</span>`;
+    const took = j.status === "done" && j.elapsed ? ` · ${fmtTime(j.elapsed)}` : "";
+    li.innerHTML = `<span>${esc(when)} · ${esc(j.demo ? "Ảnh mẫu" : sites)}<span class="muted">${esc(took)}${j.device_used ? " · " + esc(labelDevice[j.device_used] || j.device_used) : ""}</span></span><span class="st-${j.status}">${labelStatus[j.status] || j.status}</span>`;
     li.onclick = () => select(j.id);
     $("jobs").appendChild(li);
   }
@@ -238,7 +245,7 @@ async function select(id) {
       return;
     }
     $("status").textContent = `${j.message || labelStatus[j.status]} · ${fmtTime(j.elapsed)}`;
-    $("empty").textContent = `${j.message || "Đang xử lý"}… (${fmtTime(j.elapsed)}). Model chạy bằng CPU nên mỗi ca mất khoảng 5–15 phút, có thể làm việc khác trong lúc chờ.`;
+    $("empty").textContent = `${j.message || "Đang xử lý"}… (${fmtTime(j.elapsed)}). Mỗi ca có thể mất vài phút (CPU: 5–15 phút), có thể làm việc khác trong lúc chờ.`;
   };
   await tick();
   poll = setInterval(tick, 1500);
@@ -247,7 +254,7 @@ async function select(id) {
 async function showResult(j) {
   vol = await api(`/api/jobs/${j.id}/volume`);
   const r = j.result;
-  $("status").innerHTML = `${r.structures.length} cấu trúc · ${j.n_files} lát CT · ${esc((r.sites || []).map((s) => labelSite[s] || s).join(", "))}${j.elapsed ? " · " + fmtTime(j.elapsed) : ""}`;
+  $("status").innerHTML = `${r.structures.length} cấu trúc · ${j.n_files} lát CT · ${esc((r.sites || []).map((s) => labelSite[s] || s).join(", "))}${j.elapsed ? " · " + fmtTime(j.elapsed) : ""}${j.device_used ? " · " + (labelDevice[j.device_used] || j.device_used) : ""}${j.fast ? " · chế độ nhanh" : ""}`;
   $("actions").hidden = false;
   const list = $("list");
   list.innerHTML = "";
