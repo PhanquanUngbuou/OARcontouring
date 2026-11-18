@@ -116,9 +116,11 @@ class FakeSegmenter:
     def __init__(self, labelmaps: dict[str, np.ndarray]):
         self.labelmaps = labelmaps
         self.calls: list[str] = []
+        self.kwargs: list[dict] = []
 
-    def run(self, image, task):
+    def run(self, image, task, roi_subset=None, fastest=False):
         self.calls.append(task)
+        self.kwargs.append({"roi_subset": roi_subset, "fastest": fastest})
         arr = self.labelmaps.get(task)
         if arr is None:
             arr = np.zeros(image.GetSize()[::-1], np.int16)

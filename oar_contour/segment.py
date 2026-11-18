@@ -21,7 +21,8 @@ log = logging.getLogger(__name__)
 
 
 class Segmenter(Protocol):
-    def run(self, image: sitk.Image, task: str) -> tuple[np.ndarray, dict[int, str]]: ...
+    def run(self, image: sitk.Image, task: str, roi_subset: list[str] | None = None,
+            fastest: bool = False) -> tuple[np.ndarray, dict[int, str]]: ...
 
 
 def load_ct_series(dicom_dir: str | Path) -> sitk.Image:
@@ -99,7 +100,10 @@ class TotalSegmentatorRunner:
         self._commercial = set(commercial_models)
         self._ready = True
 
-    def run(self, image: sitk.Image, task: str) -> tuple[np.ndarray, dict[int, str]]:
+    def run(self, image: sitk.Image, task: str, roi_subset: list[str] | None = None,
+            fastest: bool = False) -> tuple[np.ndarray, dict[int, str]]:
+        """roi_subset (chỉ task total): chỉ chạy phần model chứa các nhãn này, cắt ảnh quanh vùng đó.
+        fastest (chỉ task total): model 6 mm rất nhanh, dùng để nhận diện vùng chụp."""
         self._setup()
         if task in self._commercial:
             raise ValueError(f"Task {task!r} cần license thương mại, không dùng trong công cụ này.")
@@ -107,16 +111,22 @@ class TotalSegmentatorRunner:
         from totalsegmentator.python_api import totalsegmentator
 
         # --fast chỉ có ở task total
-        fast = self.fast and task == "total"
+        fast = self.fast and task == "total" and not fastest
+        extra = {}
+        if task == "total":
+            if fastest:
+                extra["fastest"] = True
+            elif roi_subset:
+                extra["roi_subset"] = list(roi_subset)
         with tempfile.TemporaryDirectory(prefix="oar_") as tmp:
             ct_path = Path(tmp) / "ct.nii.gz"
             seg_path = Path(tmp) / f"{task}.nii.gz"
             sitk.WriteImage(image, str(ct_path))
-            log.info("Chạy TotalSegmentator task=%s fast=%s device=%s", task, fast, self.device)
+            log.info("Chạy TotalSegmentator task=%s fast=%s %s device=%s", task, fast, sorted(extra), self.device)
             try:
                 totalsegmentator(
                     input=ct_path, output=seg_path, task=task, ml=True,
-                    fast=fast, device=self.device, quiet=True,
+                    fast=fast, device=self.device, quiet=True, **extra,
                 )
             except Exception:
                 if self.device != "mps":
@@ -126,7 +136,7 @@ class TotalSegmentatorRunner:
                 self.device, self.fell_back = "cpu", True
                 totalsegmentator(
                     input=ct_path, output=seg_path, task=task, ml=True,
-                    fast=fast, device="cpu", quiet=True,
+                    fast=fast, device="cpu", quiet=True, **extra,
                 )
             labels = sitk.ReadImage(str(seg_path))
             arr = resample_labels_to(labels, image)

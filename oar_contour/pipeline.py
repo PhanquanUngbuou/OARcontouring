@@ -17,6 +17,7 @@ from .structures import (
     Structure,
     structures_for,
     tasks_for,
+    total_labels_for,
 )
 
 log = logging.getLogger(__name__)
@@ -167,16 +168,20 @@ def run_pipeline(
     labelmaps: dict[str, np.ndarray] = {}
     class_maps: dict[str, dict[int, str]] = {}
 
-    say("Chạy model: cơ quan toàn thân (task total)")
-    labelmaps["total"], class_maps["total"] = segmenter.run(image, "total")
     if site == "auto":
-        sites = detect_regions(labelmaps["total"], class_maps["total"])
+        say("Nhận diện vùng chụp (model nhanh 6 mm)")
+        rough, rough_map = segmenter.run(image, "total", fastest=True)
+        sites = detect_regions(rough, rough_map)
         if not sites:
-            raise RuntimeError("Không nhận diện được vùng chụp; hãy chỉ định --site.")
+            raise RuntimeError("Không nhận diện được vùng chụp; hãy chọn vùng giải phẫu.")
     else:
         sites = [s.strip() for s in site.split(",")]
 
     structures = structures_for(sites)
+    # Chỉ chạy phần model "total" chứa các cơ quan cần, cắt ảnh quanh vùng đó -> nhanh hơn nhiều
+    say("Chạy model: cơ quan chính (task total)")
+    labelmaps["total"], class_maps["total"] = segmenter.run(
+        image, "total", roi_subset=total_labels_for(structures))
     for task in tasks_for(structures):
         if task not in labelmaps:
             say(f"Chạy model bổ sung: {task}")

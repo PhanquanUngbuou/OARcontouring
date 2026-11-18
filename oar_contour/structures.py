@@ -30,6 +30,10 @@ def _s(name, task, labels, color, side=None, note=""):
     return Structure(name, task, tuple(labels), tuple(color), side, note)
 
 
+# Danh sách đã rút gọn: chỉ giữ OAR thường dùng trong ràng buộc liều của khoa.
+# Muốn thêm/bớt: sửa các danh sách dưới đây (nhãn TotalSegmentator xem bằng
+# `python -c "from totalsegmentator.map_to_binary import class_map; print(class_map['total'])"`).
+
 # ----------------------------------------------------------------- Ngực / vú
 THORAX = [
     _s("Lung_L", "total", ["lung_upper_lobe_left", "lung_lower_lobe_left"], (0, 170, 255)),
@@ -42,14 +46,10 @@ THORAX = [
     _s("Trachea", "total", "trachea", (120, 255, 255)),
     _s("SpinalCord", "total", "spinal_cord", (255, 255, 0),
        note="Tủy sống thật, không phải ống sống. Khoa vẽ SpinalCanal thì cần đối chiếu."),
-    _s("A_Aorta", "total", "aorta", (200, 0, 60)),
     _s("Breast_L", "breasts", "breast", (255, 150, 200), side="left",
        note="Vú tuyến (OAR vú đối bên), KHÔNG phải CTV vú."),
     _s("Breast_R", "breasts", "breast", (255, 110, 180), side="right",
        note="Vú tuyến (OAR vú đối bên), KHÔNG phải CTV vú."),
-    _s("Glnd_Thyroid", "total", "thyroid_gland", (150, 80, 255)),
-    _s("Liver", "total", "liver", (160, 80, 40)),
-    _s("Stomach", "total", "stomach", (255, 200, 120)),
 ]
 
 # ----------------------------------------------------------------- Bụng
@@ -61,11 +61,7 @@ ABDOMEN = [
     _s("Duodenum", "total", "duodenum", (220, 160, 255)),
     _s("Bowel_Small", "total", "small_bowel", (255, 220, 0)),
     _s("Colon", "total", "colon", (180, 120, 60)),
-    _s("Pancreas", "total", "pancreas", (255, 180, 200)),
-    _s("Spleen", "total", "spleen", (140, 0, 140)),
     _s("SpinalCord", "total", "spinal_cord", (255, 255, 0)),
-    _s("Esophagus", "total", "esophagus", (255, 170, 0)),
-    _s("Heart", "total", "heart", (255, 0, 0)),
 ]
 
 # ----------------------------------------------------------------- Tiểu khung
@@ -79,10 +75,7 @@ PELVIS = [
     _s("Bowel_Small", "total", "small_bowel", (255, 220, 0)),
     _s("Colon", "total", "colon", (180, 120, 60),
        note="Gồm cả đại tràng sigma; trực tràng KHÔNG có trong model."),
-    _s("Prostate", "total", "prostate", (0, 255, 200)),
     _s("Bone_Pelvic", "total", ["hip_left", "hip_right", "sacrum"], (200, 200, 160)),
-    _s("Kidney_L", "total", ["kidney_left", "kidney_cyst_left"], (255, 120, 0)),
-    _s("Kidney_R", "total", ["kidney_right", "kidney_cyst_right"], (255, 80, 0)),
 ]
 
 # ----------------------------------------------------------------- Đầu cổ
@@ -102,7 +95,6 @@ HEAD_NECK = [
     _s("Bone_Mandible", "craniofacial_structures", "mandible", (230, 230, 200)),
     _s("Glnd_Thyroid", "total", "thyroid_gland", (150, 80, 255)),
     _s("Esophagus", "total", "esophagus", (255, 170, 0)),
-    _s("Trachea", "total", "trachea", (120, 255, 255)),
 ]
 
 SITES: dict[str, list[Structure]] = {
@@ -112,9 +104,9 @@ SITES: dict[str, list[Structure]] = {
     "headneck": HEAD_NECK,
 }
 
-# Cơ quan quan trọng mà model miễn phí KHÔNG có -> bác sĩ phải tự vẽ.
+# Cơ quan quan trọng mà model KHÔNG có -> bác sĩ tự vẽ (sau này: model khoa tự huấn luyện).
 NOT_COVERED: dict[str, list[str]] = {
-    "thorax": ["Heart substructures (LAD, buồng tim)", "Brachial plexus", "Bronchus_Prox"],
+    "thorax": ["LAD / buồng tim", "Brachial plexus", "Bronchus_Prox"],
     "abdomen": ["Bowel_Bag", "Liver-GTV (tự trừ trong Monaco)"],
     "pelvis": ["Rectum", "Anal canal", "Bowel_Bag", "Femur_Head (đang là cả xương đùi)", "Penile bulb"],
     "headneck": ["Brainstem", "OpticChiasm", "Cochlea", "Larynx", "Pharyngeal constrictors",
@@ -139,6 +131,11 @@ def structures_for(sites: list[str]) -> list[Structure]:
         for s in SITES[site]:
             seen.setdefault(s.name, s)
     return list(seen.values())
+
+
+def total_labels_for(structures: list[Structure]) -> list[str]:
+    """Các nhãn của task "total" thực sự cần -> chỉ chạy phần model chứa chúng (roi_subset)."""
+    return sorted({l for s in structures if s.task == "total" for l in s.labels})
 
 
 def tasks_for(structures: list[Structure]) -> list[str]:

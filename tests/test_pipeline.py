@@ -26,10 +26,13 @@ def test_thorax_auto_roundtrip(ct_dir, tmp_path):
     report = run_pipeline(ct_dir, out, seg, site="auto")
 
     assert report.sites == ["thorax"]
-    assert seg.calls == ["total", "breasts"]
+    assert seg.calls == ["total", "total", "breasts"]
+    assert seg.kwargs[0]["fastest"] is True  # nhận diện vùng
+    assert "heart" in seg.kwargs[1]["roi_subset"] and "liver" not in seg.kwargs[1]["roi_subset"]
     for name in ["Lung_L", "Lung_R", "Lungs", "Heart", "SpinalCord", "Breast_L", "Breast_R"]:
         assert name in report.written
     assert "Esophagus" in report.skipped_empty
+    assert "A_Aorta" not in report.written and "Liver" not in report.skipped_empty
     assert "Brachial plexus" in report.not_covered
 
     rt = RTStructBuilder.create_from(str(ct_dir), str(out))
@@ -84,7 +87,9 @@ def test_detect_regions():
 
 
 def test_not_covered_deduplicated(ct_dir, tmp_path):
-    report = run_pipeline(ct_dir, tmp_path / "x.dcm", FakeSegmenter(thorax_labels()), site="abdomen,pelvis")
+    labels = thorax_labels()
+    labels["total"][2:20, 30:40, 30:40] = 5  # thêm "gan" để vùng bụng có cấu trúc
+    report = run_pipeline(ct_dir, tmp_path / "x.dcm", FakeSegmenter(labels), site="abdomen,pelvis")
     assert report.not_covered.count("Bowel_Bag") == 1
 
 

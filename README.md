@@ -30,10 +30,15 @@ Không cần giao diện vẽ riêng: bác sĩ sửa contour ngay trong Monaco n
 
 | Vùng | Model khoanh được | Bác sĩ vẫn phải tự vẽ | Đánh giá |
 |---|---|---|---|
-| **Ngực / vú** (`thorax`) | Lung_L/R, Lungs, Heart, Esophagus, Trachea, SpinalCord, A_Aorta, Breast_L/R, Glnd_Thyroid, Liver, Stomach | Cấu trúc con của tim (LAD), đám rối cánh tay, Bronchus | ✅ **Làm trước**: đủ gần hết OAR |
-| **Bụng** (`abdomen`) | Liver, Kidney_L/R, Stomach, Duodenum, Bowel_Small, Colon, Pancreas, Spleen, SpinalCord | Bowel_Bag | ✅ **Làm trước** |
-| **Tiểu khung** (`pelvis`) | Bladder, Femur_L/R (cả xương), Bowel_Small, Colon, Prostate, Bone_Pelvic, Kidney | **Rectum**, ống hậu môn, Femur_Head, Bowel_Bag | 🟡 Thiếu trực tràng |
-| **Đầu cổ** (`headneck`) | Brain, SpinalCord, Parotid_L/R, Glnd_Submand_L/R, Eye, Lens, OpticNrv, Bone_Mandible, Thyroid, Esophagus | **Brainstem, OpticChiasm, Cochlea**, Larynx, cơ khít hầu, khoang miệng | 🟡 Thiếu nhiều OAR quan trọng |
+| **Ngực / vú** (`thorax`) | Lung_L/R, Lungs, Heart, Esophagus, Trachea, SpinalCord, Breast_L/R | LAD / buồng tim, đám rối cánh tay, Bronchus | ✅ **Làm trước**: đủ gần hết OAR |
+| **Bụng** (`abdomen`) | Liver, Kidney_L/R, Stomach, Duodenum, Bowel_Small, Colon, SpinalCord | Bowel_Bag | ✅ **Làm trước** |
+| **Tiểu khung** (`pelvis`) | Bladder, Femur_L/R (cả xương), Bowel_Small, Colon, Bone_Pelvic | **Rectum**, ống hậu môn, Femur_Head, Bowel_Bag | 🟡 Thiếu trực tràng |
+| **Đầu cổ** (`headneck`) | Brain, SpinalCord, Parotid_L/R, Glnd_Submand_L/R, Eye, Lens, OpticNrv, Bone_Mandible, Glnd_Thyroid, Esophagus | **Brainstem, OpticChiasm, Cochlea**, Larynx, cơ khít hầu, khoang miệng | 🟡 Thiếu nhiều OAR quan trọng |
+
+Danh sách đã **rút gọn** còn các OAR thường dùng trong ràng buộc liều. Muốn thêm/bớt thì sửa
+`oar_contour/structures.py`. Model chỉ chạy **phần cần cho các cơ quan này** (model nhanh 6 mm để
+nhận diện vùng, rồi `roi_subset` cắt ảnh quanh vùng cần), nhanh khoảng **gấp đôi** so với chạy toàn bộ
+(đo trên CPU 4 nhân, ảnh mẫu bụng–chậu: 356 s → 177 s).
 
 Xem bảng chi tiết bằng lệnh `oar-contour structures`. Với tiểu khung và đầu cổ, giai đoạn
 sau có thể **tự huấn luyện model bổ sung** (nnU-Net) bằng contour cũ của khoa để vẽ các cơ quan còn thiếu.
