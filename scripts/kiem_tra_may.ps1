@@ -8,26 +8,36 @@ function Show($status, $label, $value) {
     if ($status -eq "OK") { $script:ok++ } elseif ($status -eq "CAN XEM") { $script:warn++ } elseif ($status -eq "KHONG DAT") { $script:bad++ }
 }
 Write-Host "===== KIEM TRA MAY CHO QUANCONTOUR =====" -ForegroundColor Cyan
+# Windows 7 chỉ có PowerShell 2: không có Get-CimInstance / Invoke-WebRequest -> dùng WMI và WebClient
+$psMajor = $PSVersionTable.PSVersion.Major
+function Get-Info($class, $filter) {
+    if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
+        if ($filter) { Get-CimInstance $class -Filter $filter } else { Get-CimInstance $class }
+    } else {
+        if ($filter) { Get-WmiObject $class -Filter $filter } else { Get-WmiObject $class }
+    }
+}
+Show "INFO" "PowerShell" "$($PSVersionTable.PSVersion)"
 
 # Windows
-$os = Get-CimInstance Win32_OperatingSystem
+$os = Get-Info Win32_OperatingSystem
 $build = [int]$os.BuildNumber
 $osText = "$($os.Caption) (build $build, $($os.OSArchitecture))"
 if ($build -ge 17763 -and $os.OSArchitecture -match "64") { Show "OK" "Windows" $osText }
 elseif ($build -ge 10240) { Show "CAN XEM" "Windows" "$osText - nen cap nhat Windows 10 ban moi hon" }
-else { Show "KHONG DAT" "Windows" "$osText - can Windows 10/11 64-bit" }
+else { Show "KHONG DAT" "Windows" "$osText - Windows 7/8 KHONG chay duoc PyTorch, can nang cap Windows 10/11 64-bit (hoac cai Linux)" }
 
 # CPU, RAM, ổ đĩa
-$cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
+$cpu = Get-Info Win32_Processor | Select-Object -First 1
 Show "INFO" "CPU" "$($cpu.Name.Trim()) - $($cpu.NumberOfCores) nhan"
 $ram = [math]::Round($os.TotalVisibleMemorySize / 1MB)
 if ($ram -ge 32) { Show "OK" "RAM" "$ram GB" } elseif ($ram -ge 16) { Show "CAN XEM" "RAM" "$ram GB (du dung, 32 GB tot hon)" } else { Show "KHONG DAT" "RAM" "$ram GB (can toi thieu 16 GB)" }
-$disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
+$disk = Get-Info Win32_LogicalDisk "DeviceID='C:'"
 $free = [math]::Round($disk.FreeSpace / 1GB)
 if ($free -ge 30) { Show "OK" "O C: con trong" "$free GB" } else { Show "KHONG DAT" "O C: con trong" "$free GB (can >= 30 GB)" }
 
 # Card đồ hoạ
-$gpus = Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name }
+$gpus = Get-Info Win32_VideoController | ForEach-Object { $_.Name }
 Show "INFO" "Card do hoa" ($gpus -join "; ")
 $smi = Get-Command nvidia-smi -ErrorAction SilentlyContinue
 if (-not $smi -and (Test-Path "C:\Windows\System32\nvidia-smi.exe")) { $smi = "C:\Windows\System32\nvidia-smi.exe" }
@@ -49,6 +59,9 @@ if ($smi) {
 }
 
 # Mạng: cần lúc cài đặt và lần đầu tải model
+if ($psMajor -lt 3) {
+    Show "CAN XEM" "Mang" "Windows 7 / PowerShell $psMajor khong kiem tra duoc (thieu TLS 1.2). Mo trinh duyet thu vao https://pypi.org"
+} else {
 foreach ($site in @("https://astral.sh", "https://pypi.org", "https://download.pytorch.org", "https://github.com", "https://objects.githubusercontent.com")) {
     try {
         Invoke-WebRequest -Uri $site -Method Head -UseBasicParsing -TimeoutSec 10 | Out-Null
@@ -57,6 +70,7 @@ foreach ($site in @("https://astral.sh", "https://pypi.org", "https://download.p
         if ($_.Exception.Response) { Show "OK" "Mang" $site }   # trang trả lỗi HTTP vẫn là có kết nối
         else { Show "KHONG DAT" "Mang" "$site - khong vao duoc (nho IT mo tam thoi khi cai dat)" }
     }
+}
 }
 
 # Quyền chạy script
