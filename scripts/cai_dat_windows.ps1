@@ -1,7 +1,17 @@
 ﻿# Cài QuanContour trên Windows (chạy 1 lần). Cách chạy: bấm đúp CAI_DAT.bat ở thư mục gốc.
 $ErrorActionPreference = "Stop"
+# Windows 7/8 (PowerShell 2) không chạy được PyTorch -> báo rõ và dừng
+$build = 0
+try { $build = [int](Get-WmiObject Win32_OperatingSystem).BuildNumber } catch {}
+if ($PSVersionTable.PSVersion.Major -lt 3 -or ($build -gt 0 -and $build -lt 10240)) {
+    Write-Host ""
+    Write-Host "MAY NAY DANG CHAY WINDOWS 7/8 (build $build, PowerShell $($PSVersionTable.PSVersion))." -ForegroundColor Red
+    Write-Host "QuanContour can Windows 10/11 64-bit (hoac Linux): PyTorch khong ho tro Windows 7/8." -ForegroundColor Red
+    Write-Host "Chua cai dat hay thay doi gi tren may." -ForegroundColor Yellow
+    exit 1
+}
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
-$Repo = Split-Path -Parent $PSScriptRoot
+$Repo = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Repo
 Write-Host "== Cài QuanContour vào $Repo ==" -ForegroundColor Cyan
 
