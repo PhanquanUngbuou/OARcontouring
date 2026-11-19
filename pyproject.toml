@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "oar-contour"
 version = "0.1.0"
-description = "Tự động khoanh OAR (bản nháp) từ CT mô phỏng, xuất RTSTRUCT cho TPS"
+description = "QuanContour: tự động khoanh OAR (bản nháp) từ CT mô phỏng, xuất RTSTRUCT cho TPS"
 requires-python = ">=3.10"
 dependencies = [
   "numpy",
@@ -24,6 +24,7 @@ test = ["pytest"]
 
 [project.scripts]
 oar-contour = "oar_contour.cli:main"
+quancontour = "oar_contour.cli:main"
 
 [tool.setuptools]
 packages = ["oar_contour"]

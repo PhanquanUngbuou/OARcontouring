@@ -1,6 +1,6 @@
 """App giao diện web chạy CỤC BỘ (chỉ 127.0.0.1): chọn CT, khoanh OAR, xem contour, tải RTSTRUCT.
 
-Mở bằng `oar-contour app` hoặc bấm đúp "OAR Contour.app" trên Mac.
+Mở bằng `oar-contour app` hoặc bấm đúp "QuanContour.app" trên Mac.
 Ảnh không rời khỏi máy: trình duyệt gửi file tới chính máy này, không qua Internet.
 """
 
@@ -538,7 +538,7 @@ def serve(root: Path, port: int = DEFAULT_PORT, open_browser: bool = True, segme
             webbrowser.open(url)
         return
     ref["server"] = server
-    print(f"OAR Contour đang chạy tại {url}  (đóng bằng nút 'Thoát' trong app hoặc Ctrl+C)")
+    print(f"QuanContour đang chạy tại {url}  (đóng bằng nút 'Thoát' trong app hoặc Ctrl+C)")
     print(f"Kết quả lưu tại: {root}")
     if open_browser:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()

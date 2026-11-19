@@ -1,8 +1,8 @@
-﻿# Cài OAR Contour trên Windows (chạy 1 lần). Cách chạy: chuột phải file này -> "Run with PowerShell".
+﻿# Cài QuanContour trên Windows (chạy 1 lần). Cách chạy: chuột phải file này -> "Run with PowerShell".
 $ErrorActionPreference = "Stop"
 $Repo = Split-Path -Parent $PSScriptRoot
 Set-Location $Repo
-Write-Host "== Cài OAR Contour vào $Repo ==" -ForegroundColor Cyan
+Write-Host "== Cài QuanContour vào $Repo ==" -ForegroundColor Cyan
 
 # 1. uv: tự cài Python 3.12 và thư viện, không cần quyền admin
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
@@ -29,11 +29,12 @@ if ($gpu) {
 
 # 5. Biểu tượng trên Desktop
 $desktop = [Environment]::GetFolderPath("Desktop")
+Remove-Item "$desktop\OAR Contour.lnk" -ErrorAction SilentlyContinue  # tên cũ
 $ws = New-Object -ComObject WScript.Shell
-$lnk = $ws.CreateShortcut("$desktop\OAR Contour.lnk")
+$lnk = $ws.CreateShortcut("$desktop\QuanContour.lnk")
 $lnk.TargetPath = "$Repo\scripts\chay_app_windows.bat"
 $lnk.WorkingDirectory = $Repo
 $lnk.IconLocation = "$env:SystemRoot\System32\imageres.dll,190"
 $lnk.Save()
-Write-Host "Xong. Bấm đúp 'OAR Contour' trên Desktop để mở app." -ForegroundColor Green
+Write-Host "Xong. Bấm đúp 'QuanContour' trên Desktop để mở app." -ForegroundColor Green
 Read-Host "Nhấn Enter để đóng"

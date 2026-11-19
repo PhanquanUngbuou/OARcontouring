@@ -26,7 +26,7 @@ def test_app_upload_run_view(ct_dir, tmp_path):
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
         _, ctype, html = _req(base, "/")
-        assert "text/html" in ctype and b"OAR Contour" in html
+        assert "text/html" in ctype and b"QuanContour" in html
 
         _, _, body = _req(base, "/api/jobs", "POST", json.dumps({"site": "thorax"}).encode())
         jid = json.loads(body)["id"]

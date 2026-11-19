@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OAR Contour</title>
+<title>QuanContour</title>
 <style>
 :root {
   --bg: #f4f5f7; --panel: #ffffff; --ink: #1c2330; --muted: #667085; --line: #e3e6eb;
@@ -72,7 +72,7 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
 </head>
 <body>
 <header>
-  <h1>OAR Contour</h1>
+  <h1>QuanContour</h1>
   <span class="tag">Bản nháp AI · bác sĩ phải duyệt</span>
   <span class="sp"></span>
   <span class="muted">Chạy trên máy này · ảnh không gửi ra Internet</span>
@@ -202,7 +202,7 @@ $("demo").onclick = async () => {
 };
 
 $("quit").onclick = async () => {
-  if (!confirm("Tắt app OAR Contour?")) return;
+  if (!confirm("Tắt app QuanContour?")) return;
   await api("/api/quit", { method: "POST" }).catch(() => {});
   document.body.innerHTML = '<div class="empty">Đã tắt app. Có thể đóng tab này.</div>';
 };

@@ -129,7 +129,7 @@ def _parse_dest(text: str) -> tuple[str, int, str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="oar-contour", description=__doc__)
+    p = argparse.ArgumentParser(prog="quancontour", description="QuanContour: tự động khoanh OAR")
     p.add_argument("-v", "--verbose", action="store_true")
     sub = p.add_subparsers(dest="cmd", required=True)
 

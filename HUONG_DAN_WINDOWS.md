@@ -22,14 +22,14 @@ sau này cập nhật chỉ cần `git pull`.)
    - `GPU NVIDIA sẵn sàng: NVIDIA ...` → tốt.
    - Dòng màu vàng `CHƯA dùng được GPU NVIDIA` → app vẫn chạy nhưng bằng CPU. Cập nhật driver NVIDIA
      (GeForce Experience / NVIDIA App hoặc trang nvidia.com) rồi chạy lại script.
-4. Trên Desktop xuất hiện biểu tượng **OAR Contour**.
+4. Trên Desktop xuất hiện biểu tượng **QuanContour**.
 
 Script tự cài Python 3.12 (qua công cụ `uv`), PyTorch bản hợp với card NVIDIA và thư viện của app,
 **không cần quyền admin**, không ảnh hưởng phần mềm khác trên máy.
 
 ## 3. Dùng app
 
-1. Bấm đúp **OAR Contour** trên Desktop. Một cửa sổ đen hiện lên (**giữ nguyên, đừng tắt**) và trình
+1. Bấm đúp **QuanContour** trên Desktop. Một cửa sổ đen hiện lên (**giữ nguyên, đừng tắt**) và trình
    duyệt tự mở giao diện.
 2. Thao tác giống trên Mac: **Chọn thư mục CT** → chọn vùng → **Khoanh OAR** → xem → **Tải RTSTRUCT**.
 3. Ở mục **Bộ xử lý** để **Tự động**: máy sẽ dùng GPU NVIDIA. Dòng trạng thái ghi **(GPU NVIDIA)**.

@@ -29,21 +29,21 @@ uv pip install -e ".[model]"
 cd ~/OARcontouring && source .venv/bin/activate
 ```
 
-## 2. Tạo app "OAR Contour" (làm 1 lần)
+## 2. Tạo app "QuanContour" (làm 1 lần)
 
 ```bash
 cd ~/OARcontouring && git pull && source .venv/bin/activate && uv pip install -e ".[model]"
 bash scripts/tao_app_mac.sh
 ```
 
-Finder sẽ mở ra chỗ có **OAR Contour.app**. Kéo nó vào **Dock** cho tiện.
+Finder sẽ mở ra chỗ có **QuanContour.app**. Kéo nó vào **Dock** cho tiện.
 Từ giờ **không cần Terminal nữa**.
 
 ## 3. Dùng app hằng ngày
 
 ![Giao diện app](docs/app-screenshot.png)
 
-1. Bấm **OAR Contour** trên Dock. Trình duyệt tự mở giao diện (lần đầu chờ vài giây).
+1. Bấm **QuanContour** trên Dock. Trình duyệt tự mở giao diện (lần đầu chờ vài giây).
 2. Bấm **Chọn thư mục CT** → chọn thư mục DICOM export từ Monaco/PACS.
    Thư mục có nhiều series cũng được, app tự lấy series CT nhiều lát nhất.
 3. Chọn **Vùng giải phẫu** (hoặc để Tự nhận diện) → bấm **Khoanh OAR**.

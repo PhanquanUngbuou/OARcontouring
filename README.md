@@ -1,4 +1,4 @@
-# oar-contour: tự động khoanh OAR (bản nháp) cho khoa Xạ trị
+# QuanContour: tự động khoanh OAR (bản nháp) cho khoa Xạ trị
 
 > ⚠️ **Công cụ nghiên cứu, CHƯA phải thiết bị y tế được cấp phép.** Mọi contour
 > do công cụ tạo ra là **bản nháp**. Bác sĩ **bắt buộc** duyệt và sửa từng cấu
@@ -50,7 +50,7 @@ sau có thể **tự huấn luyện model bổ sung** (nnU-Net) bằng contour c
 
 ```bash
 oar-contour app           # mở giao diện trên trình duyệt, chạy cục bộ 127.0.0.1
-bash scripts/tao_app_mac.sh   # Mac: tạo "OAR Contour.app" để bấm đúp
+bash scripts/tao_app_mac.sh   # Mac: tạo "QuanContour.app" để bấm đúp
 ```
 
 Chọn thư mục CT → Khoanh OAR → cuộn xem contour từng lát → tải RTSTRUCT.
