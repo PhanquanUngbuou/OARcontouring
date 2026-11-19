@@ -2,30 +2,31 @@
 
 Máy có card NVIDIA: mỗi ca khoảng **1–3 phút** (so với 5–20 phút trên CPU / MacBook).
 
-## 1. Lấy mã nguồn (1 lần)
+## 1. Tải về (1 lần)
 
-Cách đơn giản nhất, không cần cài gì:
-
-1. Mở https://github.com/PhanquanUngbuou/OARcontouring
+1. Trên máy Windows, mở trình duyệt vào https://github.com/PhanquanUngbuou/OARcontouring
 2. Bấm nút xanh **Code** → **Download ZIP**.
-3. Giải nén ra `C:\OARcontouring` (đường dẫn **không dấu, không dấu cách**).
+3. Chuột phải file ZIP vừa tải → **Extract All…** → giải nén ra ổ `C:\`.
+4. Đổi tên thư mục vừa giải nén (`OARcontouring-main`) thành **`QuanContour`**,
+   được `C:\QuanContour`.
 
-(Nếu máy có Git: `git clone https://github.com/PhanquanUngbuou/OARcontouring.git C:\OARcontouring`,
-sau này cập nhật chỉ cần `git pull`.)
+## 2. Bấm đúp 3 file trong `C:\QuanContour` theo thứ tự
 
-## 2. Cài đặt (1 lần, 10–20 phút)
+| Bước | Bấm đúp | Làm gì | Thời gian |
+|---|---|---|---|
+| 1 | **KIEM_TRA_MAY.bat** | Kiểm tra Windows, RAM, ổ đĩa, card NVIDIA, mạng. **Chỉ đọc, không thay đổi gì.** | 30 giây |
+| 2 | **CAI_DAT.bat** | Cài Python, PyTorch, app, tạo biểu tượng **QuanContour** trên Desktop. Không cần quyền admin. | 10–20 phút |
+| 3 | **QuanContour** (trên Desktop) | Mở app | – |
 
-1. Mở thư mục `C:\OARcontouring\scripts`.
-2. **Chuột phải** file `cai_dat_windows.ps1` → **Run with PowerShell**.
-   Nếu Windows hỏi về quyền chạy script, chọn **Yes / Run once**.
-3. Chờ cửa sổ chạy xong. Cuối cùng phải thấy dòng màu xanh:
-   - `GPU NVIDIA sẵn sàng: NVIDIA ...` → tốt.
-   - Dòng màu vàng `CHƯA dùng được GPU NVIDIA` → app vẫn chạy nhưng bằng CPU. Cập nhật driver NVIDIA
-     (GeForce Experience / NVIDIA App hoặc trang nvidia.com) rồi chạy lại script.
-4. Trên Desktop xuất hiện biểu tượng **QuanContour**.
+- Bước 1: dòng **xanh** là đạt, **vàng** là cần xem, **đỏ** là chưa đạt. Có dòng đỏ hoặc vàng thì
+  chụp màn hình gửi lại để được hướng dẫn trước khi làm bước 2.
+- Nếu Windows hiện **"Windows protected your PC"**: bấm **More info** → **Run anyway**
+  (do file tải từ Internet, không phải virus).
+- Cuối bước 2 phải thấy dòng xanh **GPU NVIDIA sẵn sàng**. Nếu thấy dòng vàng "CHƯA dùng được GPU",
+  app vẫn chạy được nhưng bằng CPU; chụp màn hình gửi lại.
 
-Script tự cài Python 3.12 (qua công cụ `uv`), PyTorch bản hợp với card NVIDIA và thư viện của app,
-**không cần quyền admin**, không ảnh hưởng phần mềm khác trên máy.
+**Cập nhật bản mới:** bấm Thoát trong app → bấm đúp **CAP_NHAT.bat** → mở lại app.
+Kết quả các ca cũ và model đã tải vẫn giữ nguyên.
 
 ## 3. Dùng app
 
@@ -38,6 +39,16 @@ Script tự cài Python 3.12 (qua công cụ `uv`), PyTorch bản hợp với ca
 Kết quả lưu trong `C:\Users\<tên>\OAR_ketqua`. Model AI lưu trong `C:\Users\<tên>\.totalsegmentator`
 (không xoá thư mục này).
 
+### Máy lập kế hoạch cũ (ví dụ máy Eclipse không dùng nữa)
+
+- Không cần gỡ phần mềm cũ: app cài riêng trong `C:\QuanContour\.venv`, không đụng tới phần mềm khác.
+- Máy này thường **không nối Internet**: nhờ IT mở mạng **tạm thời** trong lúc cài đặt và lần chạy
+  đầu tiên (tải model). Sau đó có thể ngắt Internet, app vẫn chạy.
+- Card đồ hoạ Quadro đời cũ có thể không được PyTorch mới hỗ trợ; KIEM_TRA_MAY.bat sẽ báo.
+  Khi đó app vẫn chạy bằng CPU.
+- Máy cũ có thể còn dữ liệu bệnh nhân trong Eclipse: giữ nguyên mật khẩu đăng nhập, không để người
+  ngoài dùng chung.
+
 ## 4. (Giai đoạn sau) Chạy tự động CT-sim → máy này → Monaco
 
 Máy chuyên chạy model là nơi phù hợp nhất để chạy **DICOM node**: CT-sim đẩy thêm 1 bản CT sang máy
@@ -49,11 +60,11 @@ Windows Firewall **chỉ cho IP của CT-sim**.
 
 | Lỗi | Cách xử lý |
 |---|---|
-| Bấm "Run with PowerShell" cửa sổ tắt ngay | Mở PowerShell, gõ `powershell -ExecutionPolicy Bypass -File C:\OARcontouring\scripts\cai_dat_windows.ps1` |
-| `Chua cai dat` khi mở app | Chưa chạy bước 2, hoặc bước 2 lỗi giữa chừng → chạy lại |
+| `Chua cai dat` khi mở app | Chưa chạy CAI_DAT.bat, hoặc bị lỗi giữa chừng → bấm đúp CAI_DAT.bat lại (chạy lại nhiều lần không sao) |
+| Cửa sổ báo lỗi đỏ khi cài | Chụp màn hình gửi lại |
 | Trình duyệt không tự mở | Mở Chrome/Edge, vào `http://127.0.0.1:8765` |
 | Không tải được model / thư viện | Mạng bệnh viện chặn GitHub hoặc PyPI → nhờ IT mở, hoặc cài bằng mạng khác rồi mang máy về |
-| Antivirus chặn | Cho phép thư mục `C:\OARcontouring` |
+| Antivirus chặn | Cho phép thư mục `C:\QuanContour` |
 
 ## An toàn dữ liệu
 

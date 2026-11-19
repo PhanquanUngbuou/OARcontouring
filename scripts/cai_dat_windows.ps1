@@ -1,5 +1,6 @@
-﻿# Cài QuanContour trên Windows (chạy 1 lần). Cách chạy: chuột phải file này -> "Run with PowerShell".
+﻿# Cài QuanContour trên Windows (chạy 1 lần). Cách chạy: bấm đúp CAI_DAT.bat ở thư mục gốc.
 $ErrorActionPreference = "Stop"
+try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 $Repo = Split-Path -Parent $PSScriptRoot
 Set-Location $Repo
 Write-Host "== Cài QuanContour vào $Repo ==" -ForegroundColor Cyan
@@ -37,4 +38,3 @@ $lnk.WorkingDirectory = $Repo
 $lnk.IconLocation = "$env:SystemRoot\System32\imageres.dll,190"
 $lnk.Save()
 Write-Host "Xong. Bấm đúp 'QuanContour' trên Desktop để mở app." -ForegroundColor Green
-Read-Host "Nhấn Enter để đóng"
