@@ -13,15 +13,15 @@ Model **toàn thân** gồm 5 phần. App chỉ chạy phần chứa cơ quan đ
 | Toàn thân – phần tim mạch | 18 nhãn | 1 |
 | Toàn thân – phần cơ – xương | 23 nhãn | 1 |
 | Toàn thân – phần xương sườn | 26 nhãn | 1 |
-| Đầu cổ: tuyến, mắt, khoang (`head_glands_cavities`) | 19 cấu trúc | 1.5 |
-| Sọ mặt: xương hàm, xoang, răng (`craniofacial_structures`) | 7 cấu trúc | 2.5 |
-| Đầu cổ: sụn, xương móng, mạch cảnh (`headneck_bones_vessels`) | 12 cấu trúc | 1.5 |
+| Tuyến nước bọt, mắt, thần kinh thị (`head_glands_cavities`) | 19 cấu trúc | 1.5 |
+| Xương hàm, xoang, răng (`craniofacial_structures`) | 7 cấu trúc | 2.5 |
+| Sụn thanh quản, xương móng, mạch cổ (`headneck_bones_vessels`) | 12 cấu trúc | 1.5 |
 | Cơ vùng đầu (nhai, lưỡi) (`head_muscles`) | 11 cấu trúc | 1.5 |
-| Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm (`headneck_muscles`) | 23 cấu trúc | 3.0 |
+| Cơ vùng cổ, cơ khít hầu (thử nghiệm) (`headneck_muscles`) | 23 cấu trúc | 3.0 |
 | Tuyến vú (`breasts`) | 2 cấu trúc | 1.0 |
-| Cơ thành ngực–bụng (`abdominal_muscles`) | 22 cấu trúc | 4.0 |
-| Khoang ngực, khoang bụng, màng tim, trung thất (`trunk_cavities`) | 4 cấu trúc | 1.0 |
-| Phân thùy gan (Couinaud) (`liver_segments`) | 8 cấu trúc | 1.5 |
+| Cơ thành ngực – bụng (`abdominal_muscles`) | 22 cấu trúc | 4.0 |
+| Khoang ngực, khoang bụng, màng tim (`trunk_cavities`) | 4 cấu trúc | 1.0 |
+| Phân thùy gan (`liver_segments`) | 8 cấu trúc | 1.5 |
 
 1 đơn vị ≈ 1–2 phút trên MacBook chip M, khoảng 1 phút trên CPU mạnh, vài giây trên GPU NVIDIA. Chế độ nhanh nhanh hơn nhiều nhưng kém chính xác.
 
@@ -42,7 +42,7 @@ Cột **Mặc định** = vùng mà cơ quan được tích sẵn.
 | Lung_RUL | toàn thân – nội tạng |  |
 | Lung_RML | toàn thân – nội tạng |  |
 | Lung_RLL | toàn thân – nội tạng |  |
-| Larynx_Air | Đầu cổ: sụn, xương móng, mạch cảnh |  |
+| Larynx_Air | Sụn thanh quản, xương móng, mạch cổ |  |
 
 ### Tim mạch (22)
 
@@ -50,6 +50,11 @@ Cột **Mặc định** = vùng mà cơ quan được tích sẵn.
 |---|---|---|
 | Heart | toàn thân – tim mạch | Ngực / vú, Bụng |
 | A_Aorta | toàn thân – tim mạch | Ngực / vú |
+| A_Iliac_L | toàn thân – tim mạch |  |
+| A_Iliac_R | toàn thân – tim mạch |  |
+| V_Iliac_L | toàn thân – tim mạch |  |
+| V_Iliac_R | toàn thân – tim mạch |  |
+| V_Venacava_I | toàn thân – tim mạch |  |
 | V_Pulmonary | toàn thân – tim mạch |  |
 | A_Brachiocephls | toàn thân – tim mạch |  |
 | A_Subclavian_R | toàn thân – tim mạch |  |
@@ -60,16 +65,11 @@ Cột **Mặc định** = vùng mà cơ quan được tích sẵn.
 | V_Brachioceph_R | toàn thân – tim mạch |  |
 | Atrial_Appendage_L | toàn thân – tim mạch |  |
 | V_Venacava_S | toàn thân – tim mạch |  |
-| V_Venacava_I | toàn thân – tim mạch |  |
 | V_Portal_Splenic | toàn thân – tim mạch |  |
-| A_Iliac_L | toàn thân – tim mạch |  |
-| A_Iliac_R | toàn thân – tim mạch |  |
-| V_Iliac_L | toàn thân – tim mạch |  |
-| V_Iliac_R | toàn thân – tim mạch |  |
-| A_Carotid_Int_R | Đầu cổ: sụn, xương móng, mạch cảnh |  |
-| A_Carotid_Int_L | Đầu cổ: sụn, xương móng, mạch cảnh |  |
-| V_Jugular_Int_R | Đầu cổ: sụn, xương móng, mạch cảnh |  |
-| V_Jugular_Int_L | Đầu cổ: sụn, xương móng, mạch cảnh |  |
+| A_Carotid_Int_R | Sụn thanh quản, xương móng, mạch cổ |  |
+| A_Carotid_Int_L | Sụn thanh quản, xương móng, mạch cổ |  |
+| V_Jugular_Int_R | Sụn thanh quản, xương móng, mạch cổ |  |
+| V_Jugular_Int_L | Sụn thanh quản, xương móng, mạch cổ |  |
 
 ### Tiêu hoá (9)
 
@@ -103,21 +103,21 @@ Cột **Mặc định** = vùng mà cơ quan được tích sẵn.
 |---|---|---|
 | SpinalCord | toàn thân – cơ – xương | Ngực / vú, Bụng, Tiểu khung, Đầu cổ |
 | Brain | toàn thân – cơ – xương | Đầu cổ |
-| OpticNrv_L | Đầu cổ: tuyến, mắt, khoang | Đầu cổ |
-| OpticNrv_R | Đầu cổ: tuyến, mắt, khoang | Đầu cổ |
+| OpticNrv_L | Tuyến nước bọt, mắt, thần kinh thị | Đầu cổ |
+| OpticNrv_R | Tuyến nước bọt, mắt, thần kinh thị | Đầu cổ |
 
 ### Đầu cổ: tuyến, mắt (9)
 
 | Tên | Model | Mặc định |
 |---|---|---|
-| Parotid_L | Đầu cổ: tuyến, mắt, khoang | Đầu cổ |
-| Parotid_R | Đầu cổ: tuyến, mắt, khoang | Đầu cổ |
-| Glnd_Submand_L | Đầu cổ: tuyến, mắt, khoang | Đầu cổ |
-| Glnd_Submand_R | Đầu cổ: tuyến, mắt, khoang | Đầu cổ |
-| Eye_L | Đầu cổ: tuyến, mắt, khoang | Đầu cổ |
-| Eye_R | Đầu cổ: tuyến, mắt, khoang | Đầu cổ |
-| Lens_L | Đầu cổ: tuyến, mắt, khoang | Đầu cổ |
-| Lens_R | Đầu cổ: tuyến, mắt, khoang | Đầu cổ |
+| Parotid_L | Tuyến nước bọt, mắt, thần kinh thị | Đầu cổ |
+| Parotid_R | Tuyến nước bọt, mắt, thần kinh thị | Đầu cổ |
+| Glnd_Submand_L | Tuyến nước bọt, mắt, thần kinh thị | Đầu cổ |
+| Glnd_Submand_R | Tuyến nước bọt, mắt, thần kinh thị | Đầu cổ |
+| Eye_L | Tuyến nước bọt, mắt, thần kinh thị | Đầu cổ |
+| Eye_R | Tuyến nước bọt, mắt, thần kinh thị | Đầu cổ |
+| Lens_L | Tuyến nước bọt, mắt, thần kinh thị | Đầu cổ |
+| Lens_R | Tuyến nước bọt, mắt, thần kinh thị | Đầu cổ |
 | Glnd_Thyroid | toàn thân – nội tạng | Ngực / vú, Đầu cổ |
 
 ### Đầu cổ: khác (22)
@@ -125,27 +125,27 @@ Cột **Mặc định** = vùng mà cơ quan được tích sẵn.
 | Tên | Model | Mặc định |
 |---|---|---|
 | Cartilage_Costal | toàn thân – xương sườn |  |
-| Nasopharynx | Đầu cổ: tuyến, mắt, khoang |  |
-| Oropharynx | Đầu cổ: tuyến, mắt, khoang |  |
-| Hypopharynx | Đầu cổ: tuyến, mắt, khoang |  |
-| Nasal_Cavity_R | Đầu cổ: tuyến, mắt, khoang |  |
-| Nasal_Cavity_L | Đầu cổ: tuyến, mắt, khoang |  |
-| Auditory_Canal_R | Đầu cổ: tuyến, mắt, khoang |  |
-| Auditory_Canal_L | Đầu cổ: tuyến, mắt, khoang |  |
-| Soft_Palate | Đầu cổ: tuyến, mắt, khoang |  |
-| Hard_Palate | Đầu cổ: tuyến, mắt, khoang |  |
-| Teeth_Lower | Sọ mặt: xương hàm, xoang, răng |  |
-| Head | Sọ mặt: xương hàm, xoang, răng |  |
-| Sinus_Maxillary | Sọ mặt: xương hàm, xoang, răng |  |
-| Sinus_Frontal | Sọ mặt: xương hàm, xoang, răng |  |
-| Teeth_Upper | Sọ mặt: xương hàm, xoang, răng |  |
-| Cartilage_Thyroid | Đầu cổ: sụn, xương móng, mạch cảnh |  |
-| Bone_Hyoid | Đầu cổ: sụn, xương móng, mạch cảnh |  |
-| Cartilage_Cricoid | Đầu cổ: sụn, xương móng, mạch cảnh |  |
-| Zygomatic_Arch_R | Đầu cổ: sụn, xương móng, mạch cảnh |  |
-| Zygomatic_Arch_L | Đầu cổ: sụn, xương móng, mạch cảnh |  |
-| Styloid_Process_R | Đầu cổ: sụn, xương móng, mạch cảnh |  |
-| Styloid_Process_L | Đầu cổ: sụn, xương móng, mạch cảnh |  |
+| Nasopharynx | Tuyến nước bọt, mắt, thần kinh thị |  |
+| Oropharynx | Tuyến nước bọt, mắt, thần kinh thị |  |
+| Hypopharynx | Tuyến nước bọt, mắt, thần kinh thị |  |
+| Nasal_Cavity_R | Tuyến nước bọt, mắt, thần kinh thị |  |
+| Nasal_Cavity_L | Tuyến nước bọt, mắt, thần kinh thị |  |
+| Auditory_Canal_R | Tuyến nước bọt, mắt, thần kinh thị |  |
+| Auditory_Canal_L | Tuyến nước bọt, mắt, thần kinh thị |  |
+| Soft_Palate | Tuyến nước bọt, mắt, thần kinh thị |  |
+| Hard_Palate | Tuyến nước bọt, mắt, thần kinh thị |  |
+| Teeth_Lower | Xương hàm, xoang, răng |  |
+| Head | Xương hàm, xoang, răng |  |
+| Sinus_Maxillary | Xương hàm, xoang, răng |  |
+| Sinus_Frontal | Xương hàm, xoang, răng |  |
+| Teeth_Upper | Xương hàm, xoang, răng |  |
+| Cartilage_Thyroid | Sụn thanh quản, xương móng, mạch cổ |  |
+| Bone_Hyoid | Sụn thanh quản, xương móng, mạch cổ |  |
+| Cartilage_Cricoid | Sụn thanh quản, xương móng, mạch cổ |  |
+| Zygomatic_Arch_R | Sụn thanh quản, xương móng, mạch cổ |  |
+| Zygomatic_Arch_L | Sụn thanh quản, xương móng, mạch cổ |  |
+| Styloid_Process_R | Sụn thanh quản, xương móng, mạch cổ |  |
+| Styloid_Process_L | Sụn thanh quản, xương móng, mạch cổ |  |
 
 ### Vú (2)
 
@@ -162,7 +162,7 @@ Cột **Mặc định** = vùng mà cơ quan được tích sẵn.
 | Femur_R | toàn thân – cơ – xương | Tiểu khung |
 | Bone_Pelvic | toàn thân – cơ – xương, đốt sống | Tiểu khung |
 | Bone_Hips | toàn thân – cơ – xương |  |
-| Bone_Mandible | Sọ mặt: xương hàm, xoang, răng | Đầu cổ |
+| Bone_Mandible | Xương hàm, xoang, răng | Đầu cổ |
 | Ribs_L | toàn thân – xương sườn |  |
 | Ribs_R | toàn thân – xương sườn |  |
 | Ribs | toàn thân – xương sườn | Ngực / vú |
@@ -226,7 +226,7 @@ Cột **Mặc định** = vùng mà cơ quan được tích sẵn.
 | Rib_Right_11 | toàn thân – xương sườn |  |
 | Rib_Right_12 | toàn thân – xương sườn |  |
 | Sternum | toàn thân – xương sườn |  |
-| Skull_craniofacial | Sọ mặt: xương hàm, xoang, răng |  |
+| Skull_craniofacial | Xương hàm, xoang, răng |  |
 
 ### Cơ (66)
 
@@ -253,73 +253,73 @@ Cột **Mặc định** = vùng mà cơ quan được tích sẵn.
 | Tongue | Cơ vùng đầu (nhai, lưỡi) |  |
 | Musc_Digastric_R | Cơ vùng đầu (nhai, lưỡi) |  |
 | Musc_Digastric_L | Cơ vùng đầu (nhai, lưỡi) |  |
-| Musc_Sclmast_R | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Sclmast_L | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Constrict_S | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Constrict_M | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Constrict_I | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Trapezius_R | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Trapezius_L | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Platysma_R | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Platysma_L | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Levator_Scapulae_R | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Levator_Scapulae_L | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Anterior_Scalene_R | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Anterior_Scalene_L | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Middle_Scalene_R | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Middle_Scalene_L | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Posterior_Scalene_R | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Posterior_Scalene_L | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Sterno_Thyroid_R | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Sterno_Thyroid_L | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Thyrohyoid_R | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Thyrohyoid_L | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Prevertebral_R | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Prevertebral_L | Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm |  |
-| Musc_Pectoralis_Major_R | Cơ thành ngực–bụng |  |
-| Musc_Pectoralis_Major_L | Cơ thành ngực–bụng |  |
-| Musc_Rectus_Abdominis_R | Cơ thành ngực–bụng |  |
-| Musc_Rectus_Abdominis_L | Cơ thành ngực–bụng |  |
-| Musc_Serratus_Anterior_R | Cơ thành ngực–bụng |  |
-| Musc_Serratus_Anterior_L | Cơ thành ngực–bụng |  |
-| Musc_Latissimus_Dorsi_R | Cơ thành ngực–bụng |  |
-| Musc_Latissimus_Dorsi_L | Cơ thành ngực–bụng |  |
-| Musc_Trapezius_R_abdominal | Cơ thành ngực–bụng |  |
-| Musc_Trapezius_L_abdominal | Cơ thành ngực–bụng |  |
-| Musc_External_Oblique_R | Cơ thành ngực–bụng |  |
-| Musc_External_Oblique_L | Cơ thành ngực–bụng |  |
-| Musc_Internal_Oblique_R | Cơ thành ngực–bụng |  |
-| Musc_Internal_Oblique_L | Cơ thành ngực–bụng |  |
-| Musc_Erector_Spinae_R | Cơ thành ngực–bụng |  |
-| Musc_Erector_Spinae_L | Cơ thành ngực–bụng |  |
-| Musc_Transversospinalis_R | Cơ thành ngực–bụng |  |
-| Musc_Transversospinalis_L | Cơ thành ngực–bụng |  |
-| Musc_Psoas_Major_R | Cơ thành ngực–bụng |  |
-| Musc_Psoas_Major_L | Cơ thành ngực–bụng |  |
-| Musc_Quadratus_Lumborum_R | Cơ thành ngực–bụng |  |
-| Musc_Quadratus_Lumborum_L | Cơ thành ngực–bụng |  |
+| Musc_Sclmast_R | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Sclmast_L | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Constrict_S | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Constrict_M | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Constrict_I | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Trapezius_R | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Trapezius_L | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Platysma_R | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Platysma_L | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Levator_Scapulae_R | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Levator_Scapulae_L | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Anterior_Scalene_R | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Anterior_Scalene_L | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Middle_Scalene_R | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Middle_Scalene_L | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Posterior_Scalene_R | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Posterior_Scalene_L | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Sterno_Thyroid_R | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Sterno_Thyroid_L | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Thyrohyoid_R | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Thyrohyoid_L | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Prevertebral_R | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Prevertebral_L | Cơ vùng cổ, cơ khít hầu (thử nghiệm) |  |
+| Musc_Pectoralis_Major_R | Cơ thành ngực – bụng |  |
+| Musc_Pectoralis_Major_L | Cơ thành ngực – bụng |  |
+| Musc_Rectus_Abdominis_R | Cơ thành ngực – bụng |  |
+| Musc_Rectus_Abdominis_L | Cơ thành ngực – bụng |  |
+| Musc_Serratus_Anterior_R | Cơ thành ngực – bụng |  |
+| Musc_Serratus_Anterior_L | Cơ thành ngực – bụng |  |
+| Musc_Latissimus_Dorsi_R | Cơ thành ngực – bụng |  |
+| Musc_Latissimus_Dorsi_L | Cơ thành ngực – bụng |  |
+| Musc_Trapezius_R_abdominal | Cơ thành ngực – bụng |  |
+| Musc_Trapezius_L_abdominal | Cơ thành ngực – bụng |  |
+| Musc_External_Oblique_R | Cơ thành ngực – bụng |  |
+| Musc_External_Oblique_L | Cơ thành ngực – bụng |  |
+| Musc_Internal_Oblique_R | Cơ thành ngực – bụng |  |
+| Musc_Internal_Oblique_L | Cơ thành ngực – bụng |  |
+| Musc_Erector_Spinae_R | Cơ thành ngực – bụng |  |
+| Musc_Erector_Spinae_L | Cơ thành ngực – bụng |  |
+| Musc_Transversospinalis_R | Cơ thành ngực – bụng |  |
+| Musc_Transversospinalis_L | Cơ thành ngực – bụng |  |
+| Musc_Psoas_Major_R | Cơ thành ngực – bụng |  |
+| Musc_Psoas_Major_L | Cơ thành ngực – bụng |  |
+| Musc_Quadratus_Lumborum_R | Cơ thành ngực – bụng |  |
+| Musc_Quadratus_Lumborum_L | Cơ thành ngực – bụng |  |
 
 ### Khoang cơ thể (4)
 
 | Tên | Model | Mặc định |
 |---|---|---|
-| Abdominal_Cavity | Khoang ngực, khoang bụng, màng tim, trung thất |  |
-| Thoracic_Cavity | Khoang ngực, khoang bụng, màng tim, trung thất |  |
-| Pericardium | Khoang ngực, khoang bụng, màng tim, trung thất |  |
-| Mediastinum | Khoang ngực, khoang bụng, màng tim, trung thất |  |
+| Abdominal_Cavity | Khoang ngực, khoang bụng, màng tim |  |
+| Thoracic_Cavity | Khoang ngực, khoang bụng, màng tim |  |
+| Pericardium | Khoang ngực, khoang bụng, màng tim |  |
+| Mediastinum | Khoang ngực, khoang bụng, màng tim |  |
 
 ### Phân thùy gan (8)
 
 | Tên | Model | Mặc định |
 |---|---|---|
-| Liver_Segment_1 | Phân thùy gan (Couinaud) |  |
-| Liver_Segment_2 | Phân thùy gan (Couinaud) |  |
-| Liver_Segment_3 | Phân thùy gan (Couinaud) |  |
-| Liver_Segment_4 | Phân thùy gan (Couinaud) |  |
-| Liver_Segment_5 | Phân thùy gan (Couinaud) |  |
-| Liver_Segment_6 | Phân thùy gan (Couinaud) |  |
-| Liver_Segment_7 | Phân thùy gan (Couinaud) |  |
-| Liver_Segment_8 | Phân thùy gan (Couinaud) |  |
+| Liver_Segment_1 | Phân thùy gan |  |
+| Liver_Segment_2 | Phân thùy gan |  |
+| Liver_Segment_3 | Phân thùy gan |  |
+| Liver_Segment_4 | Phân thùy gan |  |
+| Liver_Segment_5 | Phân thùy gan |  |
+| Liver_Segment_6 | Phân thùy gan |  |
+| Liver_Segment_7 | Phân thùy gan |  |
+| Liver_Segment_8 | Phân thùy gan |  |
 
 ## Cơ quan KHÔNG có trong model miễn phí (bác sĩ tự vẽ / khoa tự huấn luyện)
 

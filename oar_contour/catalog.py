@@ -30,10 +30,11 @@ ANATOMY_ORDER: list[tuple[str, list[str]]] = [
     ("Đầu cổ", ["Parotid_L", "Parotid_R", "Glnd_Submand_L", "Glnd_Submand_R", "Bone_Mandible", "Tongue",
                 "Musc_Constrict_S", "Musc_Constrict_M", "Musc_Constrict_I", "Larynx_Air", "Cartilage_Thyroid",
                 "Cartilage_Cricoid", "Glnd_Thyroid"]),
-    ("Lồng ngực", ["Trachea", "Esophagus", "Lung_L", "Lung_R", "Lungs", "Heart", "A_Aorta", "V_Venacava_S",
+    ("Lồng ngực", ["Trachea", "Esophagus", "Lung_L", "Lung_R", "Lungs", "Heart", "V_Venacava_S",
                    "Breast_L", "Breast_R", "Humerus_L", "Humerus_R", "Sternum", "Ribs", "Ribs_L", "Ribs_R"]),
     ("Bụng", ["Liver", "Gallbladder", "Stomach", "Duodenum", "Pancreas", "Spleen", "Kidney_L", "Kidney_R",
               "Kidneys", "Bowel_Small", "Colon"]),
+    ("Mạch máu (mốc vẽ hạch)", ["A_Aorta", "V_Venacava_I", "A_Iliac_L", "A_Iliac_R", "V_Iliac_L", "V_Iliac_R"]),
     ("Tiểu khung", ["Bladder", "Prostate", "Bone_Hips", "Bone_Pelvic", "Sacrum", "Femur_L", "Femur_R"]),
 ]
 

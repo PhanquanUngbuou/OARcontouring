@@ -35,6 +35,8 @@ _HN_GLANDS = ["Parotid_L", "Parotid_R", "Glnd_Submand_L", "Glnd_Submand_R"]
 _EYES = ["Eye_L", "Eye_R", "Lens_L", "Lens_R", "OpticNrv_L", "OpticNrv_R"]
 _LUNGS = ["Lung_L", "Lung_R", "Lungs"]
 _PELVIS = ["Bladder", "Bowel_Small", "Colon", "Femur_L", "Femur_R"]
+_ILIAC = ["A_Iliac_L", "A_Iliac_R", "V_Iliac_L", "V_Iliac_R"]  # mốc vẽ CTV hạch chậu
+_PARAAORTIC = ["A_Aorta", "V_Venacava_I"]  # mốc vẽ CTV hạch cạnh động mạch chủ
 
 PROTOCOLS: list[Protocol] = [
     # ------------------------------------------------------------------ Đầu cổ
@@ -145,39 +147,41 @@ PROTOCOLS: list[Protocol] = [
        ["Kidney_L", "Kidney_R", "SpinalCord", "Bowel_Small"],
        manual=["Bowel_Bag"], note="Thận bên tổn thương có thể nằm trong thể tích bia.", region="abdomen"),
     _p("testis", "U vùng bụng – sau phúc mạc", "Tinh hoàn (xạ hạch cạnh động mạch chủ)",
-       ["Kidney_L", "Kidney_R", "Liver", "SpinalCord", "Bowel_Small", "Stomach", "Duodenum"],
+       ["Kidney_L", "Kidney_R", "Liver", "SpinalCord", "Bowel_Small", "Stomach", "Duodenum", *_PARAAORTIC,
+        "A_Iliac_L", "A_Iliac_R", "V_Iliac_L", "V_Iliac_R"],
        ["Kidney_L", "Kidney_R", "SpinalCord", "Bowel_Small"],
        manual=["Testis đối bên", "Bowel_Bag"], region="abdomen"),
     # ------------------------------------------------------------------ Tiểu khung
-    _p("rectum", "U vùng tiểu khung", "Trực tràng", [*_PELVIS], ["Bladder", "Bowel_Small", "Femur_L", "Femur_R"],
+    _p("rectum", "U vùng tiểu khung", "Trực tràng", [*_PELVIS, *_ILIAC], ["Bladder", "Bowel_Small", "Femur_L", "Femur_R"],
        manual=["Bowel_Bag", "Genitalia", "Anal canal (nếu không thuộc thể tích bia)"], region="pelvis"),
     _p("anal", "U vùng tiểu khung", "Ống hậu môn",
-       [*_PELVIS, "Bone_Hips"], ["Bladder", "Bowel_Small", "Femur_L", "Femur_R"],
-       manual=["Genitalia (cơ quan sinh dục ngoài)", "Bowel_Bag"],
+       [*_PELVIS, "Bone_Hips", *_ILIAC], ["Bladder", "Bowel_Small", "Femur_L", "Femur_R"],
+       manual=["Genitalia (cơ quan sinh dục ngoài)", "Bowel_Bag", "Mạch đùi (mốc hạch bẹn)"],
        note="Bone_Hips dùng cho xạ tránh tủy xương (cánh chậu); trực tràng/ống hậu môn thuộc thể tích bia.",
        region="pelvis"),
     _p("cervix", "U vùng tiểu khung", "Cổ tử cung",
-       [*_PELVIS, "Bone_Hips", "Kidney_L", "Kidney_R", "SpinalCord"],
+       [*_PELVIS, "Bone_Hips", *_ILIAC, *_PARAAORTIC, "Kidney_L", "Kidney_R", "SpinalCord"],
        ["Bladder", "Bowel_Small", "Femur_L", "Femur_R"],
        manual=["Rectum", "Sigmoid (đang nằm trong Colon)", "Bowel_Bag"],
-       note="Kidney, SpinalCord dùng khi xạ hạch cạnh động mạch chủ. Muốn tính cả xương cùng: "
+       note="Kidney, SpinalCord, A_Aorta, V_Venacava_I dùng khi xạ hạch cạnh động mạch chủ. Muốn tính cả xương cùng: "
             "chọn Bone_Pelvic trong Mở rộng (chạy lâu hơn một chút).", region="pelvis"),
     _p("endometrium", "U vùng tiểu khung", "Nội mạc tử cung",
-       [*_PELVIS, "Bone_Hips", "Kidney_L", "Kidney_R", "SpinalCord"],
+       [*_PELVIS, "Bone_Hips", *_ILIAC, *_PARAAORTIC, "Kidney_L", "Kidney_R", "SpinalCord"],
        ["Bladder", "Bowel_Small", "Femur_L", "Femur_R"],
        manual=["Rectum", "Sigmoid (đang nằm trong Colon)", "Bowel_Bag"],
-       note="Kidney, SpinalCord dùng khi xạ hạch cạnh động mạch chủ.", region="pelvis"),
+       note="Kidney, SpinalCord, A_Aorta, V_Venacava_I dùng khi xạ hạch cạnh động mạch chủ.", region="pelvis"),
     _p("vagina", "U vùng tiểu khung", "Âm đạo",
-       [*_PELVIS, "Bone_Hips"], ["Bladder", "Bowel_Small", "Femur_L", "Femur_R"],
+       [*_PELVIS, "Bone_Hips", *_ILIAC], ["Bladder", "Bowel_Small", "Femur_L", "Femur_R"],
        manual=["Rectum", "Urethra", "Anal canal", "Bowel_Bag"], region="pelvis"),
     _p("vulva", "U vùng tiểu khung", "Âm hộ",
-       [*_PELVIS, "Bone_Hips"], ["Bladder", "Femur_L", "Femur_R"],
-       manual=["Rectum", "Anal canal", "Bowel_Bag", "Skin"],
+       [*_PELVIS, "Bone_Hips", *_ILIAC], ["Bladder", "Femur_L", "Femur_R"],
+       manual=["Rectum", "Anal canal", "Bowel_Bag", "Skin", "Mạch đùi (mốc hạch bẹn)"],
        note="Femur gồm cả xương đùi: chỏm và cổ xương đùi cần chú ý khi xạ hạch bẹn.", region="pelvis"),
-    _p("prostate", "U vùng tiểu khung", "Tiền liệt tuyến", [*_PELVIS, "Prostate"], ["Bladder", "Femur_L", "Femur_R", "Bowel_Small"],
+    _p("prostate", "U vùng tiểu khung", "Tiền liệt tuyến", [*_PELVIS, "Prostate", *_ILIAC], ["Bladder", "Femur_L", "Femur_R", "Bowel_Small"],
        manual=["Rectum", "PenileBulb", "SeminalVes (túi tinh, thuộc CTV)"],
        note="Prostate tự động chỉ để tham khảo khi vẽ CTV.", region="pelvis"),
-    _p("bladder", "U vùng tiểu khung", "Bàng quang", ["Bowel_Small", "Colon", "Femur_L", "Femur_R"],
+    _p("bladder", "U vùng tiểu khung", "Bàng quang", ["Bowel_Small", "Colon", "Femur_L", "Femur_R", *_ILIAC],
+       ["Bowel_Small", "Colon", "Femur_L", "Femur_R"],
        manual=["Rectum", "Bowel_Bag"], note="Bàng quang là cơ quan đích nên không vẽ Bladder.", region="pelvis"),
     # ------------------------------------------------------------------ Xương / di căn
     _p("bone_spine", "Di căn xương", "Cột sống",

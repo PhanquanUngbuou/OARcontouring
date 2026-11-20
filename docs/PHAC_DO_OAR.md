@@ -10,18 +10,18 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Brain, SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Sọ mặt: xương hàm, xoang, răng; Đầu cổ: tuyến, mắt, khoang | ≈ 6.0 |
-| **Triệu chứng** | SpinalCord, Brain, Parotid_L, Parotid_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | toàn thân: cơ–xương; Đầu cổ: tuyến, mắt, khoang | ≈ 2.5 |
+| **Triệt căn** | Brain, SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
+| **Triệu chứng** | SpinalCord, Brain, Parotid_L, Parotid_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
-**Bác sĩ tự vẽ:** Brainstem, OpticChiasm, Lobe_Temporal_L/R (thùy thái dương), Cochlea_L/R, Pituitary, Joint_TM_L/R (khớp thái dương hàm), Larynx, Cavity_Oral, Musc_Constrict (có model thử nghiệm trong Mở rộng), BrachialPlex_L/R  
-*Ghi chú:* Brain là toàn bộ não: thùy thái dương chưa có trong model miễn phí, cần tự vẽ.
+**Bác sĩ tự vẽ:** Brainstem, OpticChiasm, Lobe_Temporal_L/R (thùy thái dương), Cochlea_L/R, Pituitary, Joint_TM_L/R (khớp thái dương hàm), Larynx, Cavity_Oral, Musc_Constrict (có bản thử nghiệm trong Mở rộng), BrachialPlex_L/R  
+*Ghi chú:* Brain là toàn bộ não; thùy thái dương cần vẽ thêm.
 
 ### Khoang miệng
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Sọ mặt: xương hàm, xoang, răng; Đầu cổ: tuyến, mắt, khoang | ≈ 6.0 |
-| **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Đầu cổ: tuyến, mắt, khoang | ≈ 2.5 |
+| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
+| **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
 **Bác sĩ tự vẽ:** Brainstem, Cavity_Oral (ngoài u), Lips, Larynx, Musc_Constrict, Cochlea_L/R, BrachialPlex_L/R  
 
@@ -29,8 +29,8 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Sọ mặt: xương hàm, xoang, răng; Đầu cổ: tuyến, mắt, khoang | ≈ 6.0 |
-| **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Đầu cổ: tuyến, mắt, khoang | ≈ 2.5 |
+| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
+| **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
 **Bác sĩ tự vẽ:** Brainstem, Cavity_Oral, Larynx, Musc_Constrict, Cochlea_L/R, BrachialPlex_L/R  
 
@@ -38,7 +38,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus, Trachea | toàn thân: nội tạng, cơ–xương; Sọ mặt: xương hàm, xoang, răng; Đầu cổ: tuyến, mắt, khoang | ≈ 6.0 |
+| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus, Trachea | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
 | **Triệu chứng** | SpinalCord, Esophagus | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Brainstem, Larynx (nếu không thuộc thể tích bia), Musc_Constrict, Cavity_Oral, BrachialPlex_L/R  
@@ -47,7 +47,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus, Trachea | toàn thân: nội tạng, cơ–xương; Sọ mặt: xương hàm, xoang, răng; Đầu cổ: tuyến, mắt, khoang | ≈ 6.0 |
+| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus, Trachea | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
 | **Triệu chứng** | SpinalCord, Esophagus | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Brainstem, Larynx (nếu không thuộc thể tích bia), Musc_Constrict, Cavity_Oral, BrachialPlex_L/R  
@@ -56,8 +56,8 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Brain, SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible | toàn thân: cơ–xương; Sọ mặt: xương hàm, xoang, răng; Đầu cổ: tuyến, mắt, khoang | ≈ 5.0 |
-| **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Đầu cổ: tuyến, mắt, khoang | ≈ 2.5 |
+| **Triệt căn** | Brain, SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible | toàn thân: cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 5.0 |
+| **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
 **Bác sĩ tự vẽ:** Brainstem, Cochlea_L/R, Lobe_Temporal_L/R, Cavity_Oral, Joint_TM_L/R  
 *Ghi chú:* Tuyến bên tổn thương thường thuộc thể tích bia: chỉ dùng ràng buộc cho tuyến đối bên.
@@ -66,7 +66,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Esophagus, Trachea, Lung_L, Lung_R, Parotid_L, Parotid_R | toàn thân: nội tạng, cơ–xương; Đầu cổ: tuyến, mắt, khoang | ≈ 3.5 |
+| **Triệt căn** | SpinalCord, Esophagus, Trachea, Lung_L, Lung_R, Parotid_L, Parotid_R | toàn thân: nội tạng, cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 3.5 |
 | **Triệu chứng** | SpinalCord, Esophagus, Trachea | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Larynx, Musc_Constrict, BrachialPlex_L/R  
@@ -76,8 +76,8 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Sọ mặt: xương hàm, xoang, răng; Đầu cổ: tuyến, mắt, khoang | ≈ 6.0 |
-| **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Đầu cổ: tuyến, mắt, khoang | ≈ 2.5 |
+| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
+| **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
 **Bác sĩ tự vẽ:** Brainstem, Larynx, Cavity_Oral, Musc_Constrict, BrachialPlex_L/R  
 
@@ -85,8 +85,8 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Brain, SpinalCord, Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Parotid_L, Parotid_R, Bone_Mandible | toàn thân: cơ–xương; Sọ mặt: xương hàm, xoang, răng; Đầu cổ: tuyến, mắt, khoang | ≈ 5.0 |
-| **Triệu chứng** | Brain, SpinalCord, Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | toàn thân: cơ–xương; Đầu cổ: tuyến, mắt, khoang | ≈ 2.5 |
+| **Triệt căn** | Brain, SpinalCord, Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Parotid_L, Parotid_R, Bone_Mandible | toàn thân: cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 5.0 |
+| **Triệu chứng** | Brain, SpinalCord, Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
 **Bác sĩ tự vẽ:** Brainstem, OpticChiasm, Pituitary, Lobe_Temporal_L/R, Cochlea_L/R, Glnd_Lacrimal_L/R (tuyến lệ)  
 
@@ -96,8 +96,8 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Brain, Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, SpinalCord | toàn thân: cơ–xương; Đầu cổ: tuyến, mắt, khoang | ≈ 2.5 |
-| **Triệu chứng** | Brain, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | toàn thân: cơ–xương; Đầu cổ: tuyến, mắt, khoang | ≈ 2.5 |
+| **Triệt căn** | Brain, Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, SpinalCord | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
+| **Triệu chứng** | Brain, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
 **Bác sĩ tự vẽ:** Brainstem, OpticChiasm, Cochlea_L/R, Hippocampus_L/R, Pituitary, Glnd_Lacrimal_L/R  
 *Ghi chú:* Brain gồm cả u: trừ thể tích bia trong Monaco nếu khoa dùng Brain-PTV.
@@ -106,8 +106,8 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | Đầu cổ: tuyến, mắt, khoang | ≈ 1.5 |
-| **Triệu chứng** | Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | Đầu cổ: tuyến, mắt, khoang | ≈ 1.5 |
+| **Triệt căn** | Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | Tuyến nước bọt, mắt, thần kinh thị | ≈ 1.5 |
+| **Triệu chứng** | Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | Tuyến nước bọt, mắt, thần kinh thị | ≈ 1.5 |
 
 **Bác sĩ tự vẽ:** Hippocampus_L/R (nếu xạ tránh hồi hải mã), Cochlea_L/R, OpticChiasm  
 *Ghi chú:* Toàn bộ não là thể tích bia; app chỉ vẽ mắt, thủy tinh thể, thần kinh thị.
@@ -132,7 +132,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 | **Triệu chứng** | Lung_L, Lung_R, Lungs, Heart, Esophagus, SpinalCord | toàn thân: nội tạng, tim mạch, cơ–xương | ≈ 3 |
 
 **Bác sĩ tự vẽ:** Bronchus_Prox, BrachialPlex_L/R, ChestWall (dùng Ribs tham khảo), Skin  
-*Ghi chú:* Ribs/Sternum cần thêm phần model xương sườn (~1 đơn vị thời gian).
+*Ghi chú:* Ribs/Sternum làm thời gian chạy tăng thêm một chút.
 
 ### Thực quản
 
@@ -226,7 +226,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Kidney_L, Kidney_R, Liver, SpinalCord, Bowel_Small, Stomach, Duodenum | toàn thân: nội tạng, cơ–xương | ≈ 2 |
+| **Triệt căn** | Kidney_L, Kidney_R, Liver, SpinalCord, Bowel_Small, Stomach, Duodenum, A_Aorta, V_Venacava_I, A_Iliac_L, A_Iliac_R, V_Iliac_L, V_Iliac_R | toàn thân: nội tạng, tim mạch, cơ–xương | ≈ 3 |
 | **Triệu chứng** | Kidney_L, Kidney_R, SpinalCord, Bowel_Small | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Testis đối bên, Bowel_Bag  
@@ -237,7 +237,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R | toàn thân: nội tạng, cơ–xương | ≈ 2 |
+| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, A_Iliac_L, A_Iliac_R, V_Iliac_L, V_Iliac_R | toàn thân: nội tạng, tim mạch, cơ–xương | ≈ 3 |
 | **Triệu chứng** | Bladder, Bowel_Small, Femur_L, Femur_R | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Bowel_Bag, Genitalia, Anal canal (nếu không thuộc thể tích bia)  
@@ -246,37 +246,37 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Bone_Hips | toàn thân: nội tạng, cơ–xương | ≈ 2 |
+| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Bone_Hips, A_Iliac_L, A_Iliac_R, V_Iliac_L, V_Iliac_R | toàn thân: nội tạng, tim mạch, cơ–xương | ≈ 3 |
 | **Triệu chứng** | Bladder, Bowel_Small, Femur_L, Femur_R | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
-**Bác sĩ tự vẽ:** Genitalia (cơ quan sinh dục ngoài), Bowel_Bag  
+**Bác sĩ tự vẽ:** Genitalia (cơ quan sinh dục ngoài), Bowel_Bag, Mạch đùi (mốc hạch bẹn)  
 *Ghi chú:* Bone_Hips dùng cho xạ tránh tủy xương (cánh chậu); trực tràng/ống hậu môn thuộc thể tích bia.
 
 ### Cổ tử cung
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Bone_Hips, Kidney_L, Kidney_R, SpinalCord | toàn thân: nội tạng, cơ–xương | ≈ 2 |
+| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Bone_Hips, A_Iliac_L, A_Iliac_R, V_Iliac_L, V_Iliac_R, A_Aorta, V_Venacava_I, Kidney_L, Kidney_R, SpinalCord | toàn thân: nội tạng, tim mạch, cơ–xương | ≈ 3 |
 | **Triệu chứng** | Bladder, Bowel_Small, Femur_L, Femur_R | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Rectum, Sigmoid (đang nằm trong Colon), Bowel_Bag  
-*Ghi chú:* Kidney, SpinalCord dùng khi xạ hạch cạnh động mạch chủ. Muốn tính cả xương cùng: chọn Bone_Pelvic trong Mở rộng (thêm 1 phần model).
+*Ghi chú:* Kidney, SpinalCord, A_Aorta, V_Venacava_I dùng khi xạ hạch cạnh động mạch chủ. Muốn tính cả xương cùng: chọn Bone_Pelvic trong Mở rộng (chạy lâu hơn một chút).
 
 ### Nội mạc tử cung
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Bone_Hips, Kidney_L, Kidney_R, SpinalCord | toàn thân: nội tạng, cơ–xương | ≈ 2 |
+| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Bone_Hips, A_Iliac_L, A_Iliac_R, V_Iliac_L, V_Iliac_R, A_Aorta, V_Venacava_I, Kidney_L, Kidney_R, SpinalCord | toàn thân: nội tạng, tim mạch, cơ–xương | ≈ 3 |
 | **Triệu chứng** | Bladder, Bowel_Small, Femur_L, Femur_R | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Rectum, Sigmoid (đang nằm trong Colon), Bowel_Bag  
-*Ghi chú:* Kidney, SpinalCord dùng khi xạ hạch cạnh động mạch chủ.
+*Ghi chú:* Kidney, SpinalCord, A_Aorta, V_Venacava_I dùng khi xạ hạch cạnh động mạch chủ.
 
 ### Âm đạo
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Bone_Hips | toàn thân: nội tạng, cơ–xương | ≈ 2 |
+| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Bone_Hips, A_Iliac_L, A_Iliac_R, V_Iliac_L, V_Iliac_R | toàn thân: nội tạng, tim mạch, cơ–xương | ≈ 3 |
 | **Triệu chứng** | Bladder, Bowel_Small, Femur_L, Femur_R | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Rectum, Urethra, Anal canal, Bowel_Bag  
@@ -285,27 +285,27 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Bone_Hips | toàn thân: nội tạng, cơ–xương | ≈ 2 |
+| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Bone_Hips, A_Iliac_L, A_Iliac_R, V_Iliac_L, V_Iliac_R | toàn thân: nội tạng, tim mạch, cơ–xương | ≈ 3 |
 | **Triệu chứng** | Bladder, Femur_L, Femur_R | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
-**Bác sĩ tự vẽ:** Rectum, Anal canal, Bowel_Bag, Skin  
+**Bác sĩ tự vẽ:** Rectum, Anal canal, Bowel_Bag, Skin, Mạch đùi (mốc hạch bẹn)  
 *Ghi chú:* Femur gồm cả xương đùi: chỏm và cổ xương đùi cần chú ý khi xạ hạch bẹn.
 
 ### Tiền liệt tuyến
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Prostate | toàn thân: nội tạng, cơ–xương | ≈ 2 |
+| **Triệt căn** | Bladder, Bowel_Small, Colon, Femur_L, Femur_R, Prostate, A_Iliac_L, A_Iliac_R, V_Iliac_L, V_Iliac_R | toàn thân: nội tạng, tim mạch, cơ–xương | ≈ 3 |
 | **Triệu chứng** | Bladder, Femur_L, Femur_R, Bowel_Small | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Rectum, PenileBulb, SeminalVes (túi tinh, thuộc CTV)  
-*Ghi chú:* Prostate do model vẽ chỉ để tham khảo khi vẽ CTV.
+*Ghi chú:* Prostate tự động chỉ để tham khảo khi vẽ CTV.
 
 ### Bàng quang
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Bowel_Small, Colon, Femur_L, Femur_R | toàn thân: nội tạng, cơ–xương | ≈ 2 |
+| **Triệt căn** | Bowel_Small, Colon, Femur_L, Femur_R, A_Iliac_L, A_Iliac_R, V_Iliac_L, V_Iliac_R | toàn thân: nội tạng, tim mạch, cơ–xương | ≈ 3 |
 | **Triệu chứng** | Bowel_Small, Colon, Femur_L, Femur_R | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Rectum, Bowel_Bag  
