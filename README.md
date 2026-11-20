@@ -35,10 +35,10 @@ Không cần giao diện vẽ riêng: bác sĩ sửa contour ngay trong Monaco n
 | **Tiểu khung** (`pelvis`) | Bladder, Femur_L/R (cả xương), Bowel_Small, Colon, Bone_Pelvic | **Rectum**, ống hậu môn, Femur_Head, Bowel_Bag | 🟡 Thiếu trực tràng |
 | **Đầu cổ** (`headneck`) | Brain, SpinalCord, Parotid_L/R, Glnd_Submand_L/R, Eye, Lens, OpticNrv, Bone_Mandible, Glnd_Thyroid, Esophagus | **Brainstem, OpticChiasm, Cochlea**, Larynx, cơ khít hầu, khoang miệng | 🟡 Thiếu nhiều OAR quan trọng |
 
-**Cách dùng chính:** chọn *Mục đích* (triệt căn / triệu chứng) và *Vị trí xạ trị* (33 vị trí, chia theo
-U đầu cổ, U não, U lồng ngực, U vùng bụng – sau phúc mạc, U vùng tiểu khung, Di căn xương). App tự đưa ra
-danh sách OAR, chỉ chạy model cần thiết, và báo OAR nào bác sĩ phải tự vẽ. Bảng phác đồ (bản đề xuất,
-khoa cần duyệt): [docs/PHAC_DO_OAR.md](docs/PHAC_DO_OAR.md).
+**Cách dùng chính:** chọn *Mục đích* (triệt căn / triệu chứng) và *Vị trí xạ trị*: 7 vùng (U đầu cổ, U não,
+U lồng ngực, U vú, U bụng – sau phúc mạc, U tiểu khung, Di căn xương), 4 kỹ thuật riêng (U não SRT/SRS,
+Phổi SBRT, Gan SBRT, Cột sống SBRT) và *Trường hợp khác – tự chọn OAR*. App tự đưa ra danh sách OAR và chỉ
+chạy phần xử lý cần thiết. Bảng phác đồ: [docs/PHAC_DO_OAR.md](docs/PHAC_DO_OAR.md).
 
 Bảng trên là danh sách **mặc định** khi chọn "Tự chọn theo vùng giải phẫu". App có **231 cấu trúc** từ các model miễn phí; bác sĩ tự chọn
 cho từng vùng bằng nút **Chọn cơ quan…** (lựa chọn được lưu lại). Danh sách đầy đủ:

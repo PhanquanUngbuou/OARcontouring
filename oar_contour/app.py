@@ -223,14 +223,15 @@ class Job:
             return None
         from .protocols import PROTOCOL_BY_ID
 
-        p = PROTOCOL_BY_ID.get(self.protocol)
-        return {"names": list(self.names), "manual": list(p.manual) if p else [], "label": self.label()}
+        return {"names": list(self.names), "manual": [], "label": self.label()}
 
     def label(self) -> str:
         if not self.protocol:
             return ""
         from .protocols import INTENTS, PROTOCOL_BY_ID
 
+        if self.protocol == "custom":
+            return f"Tự chọn OAR · {INTENTS.get(self.intent, '').lower()}"
         p = PROTOCOL_BY_ID.get(self.protocol)
         return f"{p.name if p else self.protocol} · {INTENTS.get(self.intent, '').lower()}"
 
@@ -401,7 +402,14 @@ class JobManager:
         jid = datetime.now().strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
         job = Job(id=jid, dir=self.root / jid, site=site, fast=fast, demo=demo,
                   device=device if device in ("auto", "cpu") else "auto", presets=self.presets())
-        if protocol:
+        if protocol == "custom":  # trường hợp khác: bác sĩ tự chọn OAR
+            from .protocols import expand
+
+            job.protocol, job.intent = "custom", intent if intent in ("curative", "palliative") else "curative"
+            job.names = expand(names or [])
+            if not job.names:
+                raise ValueError("Chưa chọn OAR nào")
+        elif protocol:
             from .protocols import PROTOCOL_BY_ID, expand
 
             if protocol not in PROTOCOL_BY_ID or intent not in ("curative", "palliative"):

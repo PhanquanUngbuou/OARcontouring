@@ -184,8 +184,11 @@ footer.lic button { font-size: 11px; padding: 0; border: none; background: none;
         <div class="num">3</div>
         <div class="body">
           <h3 id="oarTitle">OAR sẽ khoanh</h3>
+          <div id="customStart" hidden style="margin-bottom:10px">
+            <label class="muted small" for="customBase">Bắt đầu từ danh sách của</label>
+            <select id="customBase"><option value="">— Danh sách trống, tự tích từ đầu —</option></select>
+          </div>
           <div class="oars" id="oars"></div>
-          <div class="manual" id="pmanual"></div>
           <div class="muted small pnote" id="pnote"></div>
           <div class="editrow"><span class="muted small" id="editedTag"></span><button id="editProto">Mở rộng / chỉnh sửa danh sách…</button></div>
         </div>
@@ -388,20 +391,27 @@ async function loadCatalog() {
   }
   const og = document.createElement("optgroup");
   og.label = "Khác";
-  og.appendChild(new Option("Tự chọn theo vùng giải phẫu", "__site"));
+  og.appendChild(new Option("Trường hợp khác – tự chọn OAR", "__custom"));
+  og.appendChild(new Option("Tự nhận diện theo vùng chụp", "__site"));
   sel.appendChild(og);
+  for (const p of CAT.protocols) $("customBase").appendChild(new Option(p.name, p.id));
   onProtoChange();
 }
+const isProto = (v) => v && v !== "__site";
 function onProtoChange() {
   const v = $("proto").value;
-  $("oarStep").hidden = !v || v === "__site";
+  $("oarStep").hidden = !isProto(v);
   $("siteStep").hidden = v !== "__site";
-  caseNames = v && v !== "__site" ? [...CAT.protocol_names[v][intent]] : null;
+  $("customStart").hidden = v !== "__custom";
+  if (v === "__custom") {
+    const base = $("customBase").value;
+    caseNames = base ? [...CAT.protocol_names[base][intent]] : [];
+  } else caseNames = isProto(v) ? [...CAT.protocol_names[v][intent]] : null;
   renderSetup();
 }
 function currentNames() {
   const v = $("proto").value;
-  if (v && v !== "__site") return caseNames || [];
+  if (isProto(v)) return caseNames || [];
   if (v === "__site") {
     const site = $("site").value;
     if (site === "auto") return null;
@@ -412,13 +422,18 @@ function currentNames() {
 function renderSetup() {
   if (!CAT) return;
   const v = $("proto").value;
-  if (v && v !== "__site") {
+  if (v === "__custom") {
+    $("oarTitle").textContent = `OAR sẽ khoanh (${caseNames.length})`;
+    $("oars").innerHTML = caseNames.length ? chipsHtml(caseNames) : '<div class="muted small">Chưa chọn OAR nào: bấm “Chọn OAR…” bên dưới.</div>';
+    $("pnote").textContent = "Dùng cho vị trí u không có trong danh sách: lấy danh sách gần nhất rồi thêm/bớt, hoặc tự tích từ đầu.";
+    $("editedTag").textContent = "";
+    $("editProto").textContent = "Chọn OAR…";
+  } else if (isProto(v)) {
     const p = CAT.protoById[v];
     const edited = JSON.stringify(caseNames) !== JSON.stringify(CAT.protocol_names[v][intent]);
+    $("editProto").textContent = "Mở rộng / chỉnh sửa danh sách…";
     $("oarTitle").textContent = `OAR sẽ khoanh (${caseNames.length})`;
     $("oars").innerHTML = chipsHtml(caseNames);
-    $("pmanual").innerHTML = p.manual.length ? `<b>Cần bác sĩ vẽ thêm</b>${p.manual.map(esc).join(" · ")}` : "";
-    $("pmanual").hidden = !p.manual.length;
     $("pnote").textContent = p.note || "";
     $("editedTag").textContent = edited ? "Đã chỉnh riêng cho ca này" : "";
   }
@@ -428,10 +443,13 @@ function renderSetup() {
   }
   const names = currentNames();
   $("preEta").textContent = names && names.length ? `Dự kiến khoảng ${minutesFor(names)} phút trên máy này` : "";
-  $("run").disabled = !picked.length || !v;
-  $("run").textContent = !picked.length ? "Chọn ảnh CT để bắt đầu" : !v ? "Chọn vị trí u để bắt đầu" : "Bắt đầu khoanh OAR";
+  const empty = isProto(v) && !(caseNames && caseNames.length);
+  $("run").disabled = !picked.length || !v || empty;
+  $("run").textContent = !picked.length ? "Chọn ảnh CT để bắt đầu" : !v ? "Chọn vị trí u để bắt đầu"
+    : empty ? "Chọn OAR để bắt đầu" : "Bắt đầu khoanh OAR";
 }
 $("proto").addEventListener("change", onProtoChange);
+$("customBase").addEventListener("change", onProtoChange);
 $("site").addEventListener("change", renderSetup);
 $("fast").addEventListener("change", renderSetup);
 document.querySelectorAll("[data-intent]").forEach((b) => (b.onclick = () => {
@@ -450,7 +468,8 @@ $("files").onchange = (e) => {
 };
 function caseSpec() {
   const v = $("proto").value;
-  if (v && v !== "__site") return { protocol: v, intent, names: caseNames };
+  if (v === "__custom") return { protocol: "custom", intent, names: caseNames };
+  if (isProto(v)) return { protocol: v, intent, names: caseNames };
   return { site: $("site").value };
 }
 
@@ -602,7 +621,6 @@ async function showResult(j) {
     e.preventDefault(); const ctr = vol.centers[el.dataset.go]; if (ctr) { view.idx = { ...ctr }; syncSlider(); draw(); }
   }));
   let extra = "";
-  if (r.not_covered && r.not_covered.length) extra += `<div class="manual"><b>Cần bác sĩ vẽ thêm</b>${r.not_covered.map(esc).join(" · ")}</div>`;
   const notes = Object.entries(r.notes || {});
   if (notes.length) extra += `<div class="muted small" style="margin-top:10px">${notes.map(([n, t]) => `<b>${esc(n)}</b>: ${esc(t)}`).join("<br>")}</div>`;
   $("extra").innerHTML = extra;
@@ -744,14 +762,17 @@ const setSel = (list) => { if (modalMode === "proto") draftList = list; else dra
 $("editProto").onclick = () => {
   const v = $("proto").value;
   modalMode = "proto"; draftList = [...caseNames];
-  $("mtitle").textContent = `OAR: ${CAT.protoById[v].name} · ${CAT.intents[intent].toLowerCase()}`;
-  $("muse").hidden = false; $("msave").textContent = "Lưu làm mặc định của khoa"; $("mtabs").hidden = true;
+  const custom = v === "__custom";
+  $("mtitle").textContent = custom ? "Tự chọn OAR cho ca này" : `OAR: ${CAT.protoById[v].name} · ${CAT.intents[intent].toLowerCase()}`;
+  $("muse").hidden = false; $("msave").hidden = custom; $("mreset").hidden = custom;
+  $("msave").textContent = "Lưu làm mặc định của khoa"; $("mtabs").hidden = true;
   $("msearch").value = ""; $("mnotice").hidden = true; $("modal").hidden = false; renderModal();
 };
 $("editPreset").onclick = () => {
   editSite = $("site").value === "auto" ? "thorax" : $("site").value;
   draft = JSON.parse(JSON.stringify(CAT.presets));
   modalMode = "site"; $("mtitle").textContent = "Chọn cơ quan cho từng vùng giải phẫu";
+  $("msave").hidden = false; $("mreset").hidden = false;
   $("muse").hidden = true; $("msave").textContent = "Lưu"; $("mtabs").hidden = false;
   $("msearch").value = ""; $("mnotice").hidden = true; $("modal").hidden = false; renderModal();
 };

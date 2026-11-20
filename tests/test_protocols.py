@@ -15,26 +15,23 @@ def test_every_protocol_name_exists_in_free_catalog():
 
 
 def test_minimal_models_rules():
-    for p in PROTOCOLS:
-        if p.group not in ("U đầu cổ", "U não"):
-            continue
+    for pid in ("headneck", "brain", "brain_srs"):
         for intent in ("curative", "palliative"):
-            c = estimate_cost(default_names(p.id, intent))
-            # đầu cổ / não: không chạy tim mạch, xương sườn, đốt sống, model mạch máu/cơ cổ
-            assert not {"cardiac", "ribs", "vertebrae"} & set(c["total_parts"]), (p.id, intent)
+            c = estimate_cost(default_names(pid, intent))
+            # đầu cổ / não: không chạy tim mạch, xương sườn, đốt sống, mạch máu/cơ cổ
+            assert not {"cardiac", "ribs", "vertebrae"} & set(c["total_parts"]), (pid, intent)
             assert not {"headneck_bones_vessels", "headneck_muscles", "head_muscles"} & set(c["tasks"])
-    # xương hàm dưới có trong ung thư đầu cổ triệt căn
-    for pid in ("hn_nasopharynx", "hn_oral", "hn_oropharynx", "hn_larynx", "hn_hypopharynx", "hn_unknown"):
-        assert "Bone_Mandible" in default_names(pid, "curative")
-    # xương sườn chỉ ở SBRT phổi, đốt sống chỉ ở SBRT cột sống
+    assert "Bone_Mandible" in default_names("headneck", "curative")
     for p in PROTOCOLS:
         for intent in ("curative", "palliative"):
             parts = estimate_cost(default_names(p.id, intent))["total_parts"]
             if "ribs" in parts:
-                assert (p.id, intent) == ("lung_sbrt", "curative")
+                assert p.id in ("lung_sbrt", "liver_sbrt"), p.id
             if "vertebrae" in parts:
-                assert (p.id, intent) == ("bone_spine", "curative")
-    assert len([n for n in default_names("bone_spine", "curative") if n.startswith("Vertebrae_")]) >= 20
+                assert p.id == "spine_sbrt", p.id
+    assert len([n for n in default_names("spine_sbrt", "curative") if n.startswith("Vertebrae_")]) >= 20
+    assert {"Breast_L", "Breast_R"} <= set(default_names("breast", "curative"))
+    assert not {"Breast_L", "Breast_R"} & set(default_names("thorax", "curative"))  # vú tách riêng
 
 
 def test_protocol_run_uses_fixed_list_and_skips_total_when_not_needed(ct_dir, tmp_path):
@@ -48,18 +45,15 @@ def test_protocol_run_uses_fixed_list_and_skips_total_when_not_needed(ct_dir, tm
     labels = thorax_labels()
     labels["total"][0:4, 10:30, 10:50] = 90
     seg = FakeSegmenter(labels)
-    names = default_names("brain_wbrt", "curative")
+    names = ["Eye_L", "Eye_R", "Lens_L", "Lens_R"]  # chỉ cần model mắt
     try:
-        run_pipeline(ct_dir, tmp_path / "b.dcm", seg, names=names, manual=list(PROTOCOL_BY_ID["brain_wbrt"].manual))
+        run_pipeline(ct_dir, tmp_path / "b.dcm", seg, names=names)
     except RuntimeError:
         pass  # phantom không có mắt -> "Không tạo được cấu trúc nào" là đúng
     assert seg.calls == ["total", "head_glands_cavities"]
     assert seg.kwargs[0]["fastest"] is True
 
 
-def test_all_head_neck_curative_include_optic_and_lens():
-    for p in PROTOCOLS:
-        if p.group == "U đầu cổ":
-            names = default_names(p.id, "curative")
-            assert {"Lens_L", "Lens_R", "OpticNrv_L", "OpticNrv_R"} <= set(names), p.id
-    assert {"hn_orbit_lymphoma", "hn_nasal_lymphoma"} <= set(PROTOCOL_BY_ID)
+def test_head_neck_curative_include_optic_and_lens():
+    assert {"Lens_L", "Lens_R", "OpticNrv_L", "OpticNrv_R"} <= set(default_names("headneck", "curative"))
+    assert {"brain_srs", "lung_sbrt", "liver_sbrt", "spine_sbrt"} <= set(PROTOCOL_BY_ID)

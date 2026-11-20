@@ -36,10 +36,10 @@ for p in PROTOCOLS:
         m, u = models(names)
         lines.append(f"| **{vi}** | {short(names)} | {m} | ≈ {u} |")
     lines.append("")
-    if p.manual:
-        lines.append(f"**Bác sĩ tự vẽ:** {', '.join(p.manual)}  ")
     if p.note:
         lines.append(f"*Ghi chú:* {p.note}")
     lines.append("")
+lines += ["## Trường hợp khác", "", "Vị trí u không có trong danh sách: chọn **Trường hợp khác – tự chọn OAR**, "
+          "lấy sẵn danh sách của vùng gần nhất rồi thêm/bớt, hoặc tự tích từ đầu trong danh mục đầy đủ.", ""]
 Path(__file__).resolve().parent.parent.joinpath("docs", "PHAC_DO_OAR.md").write_text("\n".join(lines), encoding="utf-8")
 print("Đã ghi docs/PHAC_DO_OAR.md")
