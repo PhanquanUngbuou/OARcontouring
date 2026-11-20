@@ -20,7 +20,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
+| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
 | **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
 **Bác sĩ tự vẽ:** Brainstem, Cavity_Oral (ngoài u), Lips, Larynx, Musc_Constrict, Cochlea_L/R, BrachialPlex_L/R  
@@ -29,7 +29,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
+| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
 | **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
 **Bác sĩ tự vẽ:** Brainstem, Cavity_Oral, Larynx, Musc_Constrict, Cochlea_L/R, BrachialPlex_L/R  
@@ -38,7 +38,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus, Trachea | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
+| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Bone_Mandible, Glnd_Thyroid, Esophagus, Trachea | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
 | **Triệu chứng** | SpinalCord, Esophagus | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Brainstem, Larynx (nếu không thuộc thể tích bia), Musc_Constrict, Cavity_Oral, BrachialPlex_L/R  
@@ -47,7 +47,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus, Trachea | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
+| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Bone_Mandible, Glnd_Thyroid, Esophagus, Trachea | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
 | **Triệu chứng** | SpinalCord, Esophagus | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Brainstem, Larynx (nếu không thuộc thể tích bia), Musc_Constrict, Cavity_Oral, BrachialPlex_L/R  
@@ -56,7 +56,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Brain, SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible | toàn thân: cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 5.0 |
+| **Triệt căn** | Brain, SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Bone_Mandible | toàn thân: cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 5.0 |
 | **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
 **Bác sĩ tự vẽ:** Brainstem, Cochlea_L/R, Lobe_Temporal_L/R, Cavity_Oral, Joint_TM_L/R  
@@ -66,7 +66,7 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Esophagus, Trachea, Lung_L, Lung_R, Parotid_L, Parotid_R | toàn thân: nội tạng, cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 3.5 |
+| **Triệt căn** | SpinalCord, Esophagus, Trachea, Lung_L, Lung_R, Parotid_L, Parotid_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | toàn thân: nội tạng, cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 3.5 |
 | **Triệu chứng** | SpinalCord, Esophagus, Trachea | toàn thân: nội tạng, cơ–xương | ≈ 2 |
 
 **Bác sĩ tự vẽ:** Larynx, Musc_Constrict, BrachialPlex_L/R  
@@ -76,10 +76,29 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
+| **Triệt căn** | SpinalCord, Parotid_L, Parotid_R, Glnd_Submand_L, Glnd_Submand_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Bone_Mandible, Glnd_Thyroid, Esophagus | toàn thân: nội tạng, cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 6.0 |
 | **Triệu chứng** | SpinalCord, Parotid_L, Parotid_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
 
 **Bác sĩ tự vẽ:** Brainstem, Larynx, Cavity_Oral, Musc_Constrict, BrachialPlex_L/R  
+
+### Lymphoma hốc mắt
+
+| | OAR app tự vẽ | Model cần chạy | Thời gian |
+|---|---|---|---|
+| **Triệt căn** | Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Brain | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
+| **Triệu chứng** | Lens_L, Lens_R, Eye_L, Eye_R | Tuyến nước bọt, mắt, thần kinh thị | ≈ 1.5 |
+
+**Bác sĩ tự vẽ:** Glnd_Lacrimal_L/R (tuyến lệ), Cornea (giác mạc), Retina (võng mạc), OpticChiasm  
+*Ghi chú:* Mắt bên tổn thương thường thuộc thể tích bia: ràng buộc chủ yếu cho thủy tinh thể và mắt đối bên.
+
+### Lymphoma mũi xoang
+
+| | OAR app tự vẽ | Model cần chạy | Thời gian |
+|---|---|---|---|
+| **Triệt căn** | Brain, SpinalCord, Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R, Parotid_L, Parotid_R, Bone_Mandible | toàn thân: cơ–xương; Xương hàm, xoang, răng; Tuyến nước bọt, mắt, thần kinh thị | ≈ 5.0 |
+| **Triệu chứng** | Brain, Eye_L, Eye_R, Lens_L, Lens_R, OpticNrv_L, OpticNrv_R | toàn thân: cơ–xương; Tuyến nước bọt, mắt, thần kinh thị | ≈ 2.5 |
+
+**Bác sĩ tự vẽ:** Brainstem, OpticChiasm, Pituitary, Glnd_Lacrimal_L/R, Cavity_Oral, Cochlea_L/R  
 
 ### Hốc mũi – xoang
 

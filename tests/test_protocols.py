@@ -55,3 +55,11 @@ def test_protocol_run_uses_fixed_list_and_skips_total_when_not_needed(ct_dir, tm
         pass  # phantom không có mắt -> "Không tạo được cấu trúc nào" là đúng
     assert seg.calls == ["total", "head_glands_cavities"]
     assert seg.kwargs[0]["fastest"] is True
+
+
+def test_all_head_neck_curative_include_optic_and_lens():
+    for p in PROTOCOLS:
+        if p.group == "U đầu cổ":
+            names = default_names(p.id, "curative")
+            assert {"Lens_L", "Lens_R", "OpticNrv_L", "OpticNrv_R"} <= set(names), p.id
+    assert {"hn_orbit_lymphoma", "hn_nasal_lymphoma"} <= set(PROTOCOL_BY_ID)
