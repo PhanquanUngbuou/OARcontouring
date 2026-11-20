@@ -51,10 +51,22 @@ def test_app_upload_run_view(ct_dir, tmp_path):
 
         vol = json.loads(_req(base, f"/api/jobs/{jid}/volume")[2])
         assert vol["sizes"] == {"axial": 24, "coronal": 48, "sagittal": 64}
+        assert vol["geom"]["axial"] == {"w": 64, "h": 48, "px_w": 2.0, "px_h": 2.0}
+        assert vol["geom"]["coronal"] == {"w": 64, "h": 24, "px_w": 2.0, "px_h": 3.0}
+        assert json.loads(_req(base, "/api/info")[2])["accelerator"] in ("cpu", "gpu", "mps")
         for axis in ("axial", "coronal", "sagittal"):
             i = vol["centers"]["Heart"][axis]
-            _, ctype, png = _req(base, f"/api/jobs/{jid}/slice?axis={axis}&i={i}&w=lung&hide=Lungs")
+            _, ctype, png = _req(base, f"/api/jobs/{jid}/slice?axis={axis}&i={i}&w=lung")
             assert ctype == "image/png" and png[:4] == b"\x89PNG"
+            g = vol["geom"][axis]
+            from PIL import Image
+            import io
+            assert Image.open(io.BytesIO(png)).size == (g["w"], g["h"])  # độ phân giải gốc
+            cont = json.loads(_req(base, f"/api/jobs/{jid}/contours?axis={axis}&i={i}")[2])
+            assert "Heart" in cont
+            xs = [x for poly in cont["Heart"] for x, _ in poly]
+            ys = [y for poly in cont["Heart"] for _, y in poly]
+            assert 0 <= min(xs) and max(xs) <= g["w"] and 0 <= min(ys) and max(ys) <= g["h"]
         _, ctype, rs = _req(base, f"/api/jobs/{jid}/rtstruct")
         assert ctype == "application/dicom" and rs[128:132] == b"DICM"
 

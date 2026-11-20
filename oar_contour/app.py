@@ -38,6 +38,17 @@ WINDOWS = {"soft": (40, 400), "lung": (-600, 1500), "bone": (400, 1800)}
 SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]")
 
 
+def guess_accelerator() -> str:
+    """Đoán nhanh máy có bộ tăng tốc không (không import PyTorch để app nhẹ)."""
+    import platform
+
+    if sys.platform == "darwin" and platform.machine() == "arm64":
+        return "mps"
+    if shutil.which("nvidia-smi") or Path(r"C:\Windows\System32\nvidia-smi.exe").exists():
+        return "gpu"
+    return "cpu"
+
+
 # ------------------------------------------------------------------ dữ liệu xem ảnh
 @dataclass
 class ViewerData:
@@ -95,15 +106,30 @@ class ViewerData:
             full[bbox[1], bbox[2]] = sub[local, :, :]
         else:
             full[bbox[0], bbox[2]] = sub[:, local, :]
-        return full
+        return self._orient(full, axis)
 
     def _plane_shape(self, axis):
         r, c, n = self.vol.shape
         return {"axial": (r, c), "coronal": (c, n), "sagittal": (r, n)}[axis]
 
-    def render(self, axis: str, i: int, window: str, hidden: set[str]) -> bytes:
+    @staticmethod
+    def _orient(plane: np.ndarray, axis: str) -> np.ndarray:
+        """Hướng hiển thị: axial giữ nguyên; coronal/sagittal dựng trục z đứng, đầu ở trên."""
+        return plane if axis == "axial" else plane.T[::-1]
+
+    def geometry(self) -> dict:
+        """Kích thước (pixel) và cỡ pixel (mm) của ảnh hiển thị theo từng trục."""
+        r, c, n = self.vol.shape
+        row_mm, col_mm, z_mm = self.spacing
+        return {
+            "axial": {"w": c, "h": r, "px_w": col_mm, "px_h": row_mm},
+            "coronal": {"w": c, "h": n, "px_w": col_mm, "px_h": z_mm},
+            "sagittal": {"w": r, "h": n, "px_w": row_mm, "px_h": z_mm},
+        }
+
+    def ct_png(self, axis: str, i: int, window: str) -> bytes:
+        """Ảnh CT (đã chỉnh cửa sổ) đúng độ phân giải gốc; trình duyệt tự phóng mượt khi zoom."""
         from PIL import Image
-        from scipy import ndimage
 
         i = int(np.clip(i, 0, self.shape(axis) - 1))
         if axis == "axial":
@@ -114,31 +140,34 @@ class ViewerData:
             img = self.vol[:, i, :]
         level, width = WINDOWS.get(window, WINDOWS["soft"])
         gray = np.clip((img.astype(np.float32) - (level - width / 2)) / width * 255, 0, 255).astype(np.uint8)
-        rgb = np.repeat(gray[..., None], 3, axis=2)
+        buf = io.BytesIO()
+        Image.fromarray(np.ascontiguousarray(self._orient(gray, axis))).save(buf, "PNG", compress_level=1)
+        return buf.getvalue()
+
+    def contours(self, axis: str, i: int) -> dict:
+        """Đường viền từng cơ quan trên lát i, toạ độ pixel hiển thị (pixel (c, r) chiếm [c, c+1]).
+
+        Lấy biên trên lưới phóng 2 lần nên đường viền nằm sát mép voxel (lệch <= 1/4 voxel).
+        """
+        import cv2
+
+        i = int(np.clip(i, 0, self.shape(axis) - 1))
+        out = {}
         for name in self.masks:
-            if name in hidden:
-                continue
             m = self._mask_slice(name, axis, i)
             if m is None or not m.any():
                 continue
-            edge = m & ~ndimage.binary_erosion(m)
-            col = np.array(self.colors[name], np.uint8)
-            rgb[m] = (rgb[m] * 0.82 + col * 0.18).astype(np.uint8)  # tô mờ bên trong
-            rgb[edge] = col
-        row_mm, col_mm, z_mm = self.spacing
-        if axis != "axial":
-            rgb = rgb.transpose(1, 0, 2)[::-1]  # trục z dựng đứng, đầu ở trên
-        h, w = rgb.shape[:2]
-        px_h = {"axial": row_mm, "coronal": z_mm, "sagittal": z_mm}[axis]
-        px_w = {"axial": col_mm, "coronal": col_mm, "sagittal": row_mm}[axis]
-        # đưa về tỉ lệ mm thật; ảnh nhỏ thì phóng to để cạnh dài >= 600 px
-        phys_w, phys_h = w * px_w, h * px_h
-        mm_per_px = min(min(px_w, px_h), max(phys_w, phys_h) / 600)
-        size = (max(1, round(phys_w / mm_per_px)), max(1, round(phys_h / mm_per_px)))
-        im = Image.fromarray(np.ascontiguousarray(rgb)).resize(size, Image.NEAREST)
-        buf = io.BytesIO()
-        im.save(buf, "PNG", compress_level=1)
-        return buf.getvalue()
+            up = np.kron(m.astype(np.uint8), np.ones((2, 2), np.uint8))
+            found, _ = cv2.findContours(up, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+            polys = []
+            for c in found:
+                pts = c.reshape(-1, 2).astype(np.float32)
+                if len(pts) < 3:
+                    continue
+                polys.append(np.round((pts + 0.5) / 2.0, 2).tolist())
+            if polys:
+                out[name] = polys
+        return out
 
     def centers(self) -> dict[str, dict[str, int]]:
         """Lát giữa của từng cơ quan theo từng trục, để bấm vào tên là nhảy tới."""
@@ -430,6 +459,8 @@ def make_handler(manager: JobManager, server_ref: dict):
             parts = [p for p in url.path.split("/") if p]
             if not parts:
                 return self._send(200, (WEB_DIR / "index.html").read_bytes(), "text/html; charset=utf-8")
+            if parts == ["api", "info"]:
+                return self._json({"accelerator": guess_accelerator()})
             if parts == ["api", "jobs"]:
                 jobs = sorted(manager.jobs.values(), key=lambda j: j.id, reverse=True)
                 return self._json([j.public() for j in jobs])
@@ -448,15 +479,21 @@ def make_handler(manager: JobManager, server_ref: dict):
                         "sizes": {a: v.shape(a) for a in ("axial", "coronal", "sagittal")},
                         "colors": {n: v.colors[n] for n in v.masks},
                         "centers": v.centers(),
+                        "geom": v.geometry(),
                     })
                 if what == "slice":
                     v = manager.viewer(job)
                     axis = q.get("axis", ["axial"])[0]
                     if axis not in ("axial", "coronal", "sagittal"):
                         return self._json({"error": "axis"}, 400)
-                    hidden = set(filter(None, q.get("hide", [""])[0].split(",")))
-                    png = v.render(axis, int(q.get("i", ["0"])[0]), q.get("w", ["soft"])[0], hidden)
+                    png = v.ct_png(axis, int(q.get("i", ["0"])[0]), q.get("w", ["soft"])[0])
                     return self._send(200, png, "image/png")
+                if what == "contours":
+                    v = manager.viewer(job)
+                    axis = q.get("axis", ["axial"])[0]
+                    if axis not in ("axial", "coronal", "sagittal"):
+                        return self._json({"error": "axis"}, 400)
+                    return self._json(v.contours(axis, int(q.get("i", ["0"])[0])))
                 if what == "rtstruct":
                     return self._send(200, job.rtstruct.read_bytes(), "application/dicom",
                                       {"Content-Disposition": f'attachment; filename="RS_AI_OAR_{job.id}.dcm"'})

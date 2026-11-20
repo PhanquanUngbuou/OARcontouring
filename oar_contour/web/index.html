@@ -54,8 +54,15 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
 .toolbar button { background: transparent; color: #cfd6e0; border-color: #343b46; padding: 5px 10px; }
 .toolbar button.on { background: #2b3644; color: #fff; border-color: #4c9cff; }
 .toolbar .sp { flex: 1; }
-.canvas { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 6px; }
-.canvas img { max-width: 100%; max-height: 100%; image-rendering: pixelated; user-select: none; }
+.canvas { flex: 1; position: relative; min-height: 0; overflow: hidden; touch-action: none; }
+.canvas.grab { cursor: grab; } .canvas.grabbing { cursor: grabbing; }
+.canvas .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+#stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+#stage img, #stage svg { position: absolute; inset: 0; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
+#stage img { image-rendering: auto; }
+#stage svg { overflow: visible; pointer-events: none; }
+.zoom { display: flex; gap: 4px; align-items: center; color: #cfd6e0; font-size: 12px; }
+.zoom span { min-width: 44px; text-align: center; }
 .slider { display: flex; gap: 10px; align-items: center; padding: 8px 12px; color: #cfd6e0; font-size: 12px; }
 .slider input { flex: 1; }
 .empty { color: #8b95a5; text-align: center; padding: 40px; }
@@ -101,6 +108,8 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
         <option value="auto">Tự động (chip đồ hoạ nếu có)</option>
         <option value="cpu">Chỉ dùng CPU</option>
       </select>
+      <div class="note" id="cpuhint" hidden>Máy này <b>không có card đồ hoạ</b> phù hợp: chế độ đầy đủ có thể mất 30–60 phút/ca.
+        Nên tích <b>Chế độ nhanh</b> (khoảng 3–8 phút) để xem thử, ca cần chính xác thì chạy trên máy có GPU.</div>
       <label class="f"><input type="checkbox" id="fast"> Chế độ nhanh (kém chính xác hơn, chỉ để thử)</label>
       <div class="row" style="margin-top:12px">
         <button class="primary" id="run" disabled>Khoanh OAR</button>
@@ -125,8 +134,11 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
         <button data-w="lung">Phổi</button>
         <button data-w="bone">Xương</button>
       </div>
-      <div class="canvas" id="canvas"><div class="empty" id="empty">Chọn thư mục CT hoặc bấm “Chạy ảnh mẫu” để bắt đầu.</div><img id="img" alt="" hidden></div>
-      <div class="slider"><span id="sl">–</span><input type="range" id="slice" min="0" max="0" value="0" disabled><span class="muted" style="color:#8b95a5">Cuộn chuột / ↑↓ để đổi lát</span></div>
+      <div class="canvas" id="canvas"><div class="empty" id="empty">Chọn thư mục CT hoặc bấm “Chạy ảnh mẫu” để bắt đầu.</div>
+        <div id="stage" hidden><img id="img" alt=""><svg id="ov" preserveAspectRatio="none"></svg></div></div>
+      <div class="slider"><span id="sl">–</span><input type="range" id="slice" min="0" max="0" value="0" disabled>
+        <span class="zoom"><button id="zout" title="Thu nhỏ (−)">−</button><span id="zl">100%</span><button id="zin" title="Phóng to (+)">+</button><button id="zfit" title="Vừa khung (0)">Vừa khung</button></span></div>
+      <div class="slider muted" style="padding-top:0;color:#8b95a5">Cuộn / ↑↓: đổi lát · Chụm 2 ngón hoặc Ctrl+cuộn: zoom · Kéo: di chuyển ảnh · Bấm đúp: vừa khung</div>
     </div>
     <div class="card structs">
       <h2>Cấu trúc</h2>
@@ -232,7 +244,7 @@ let poll = null;
 async function select(id) {
   current = id; vol = null; view.hidden.clear();
   clearInterval(poll);
-  $("img").hidden = true; $("empty").hidden = false; $("slice").disabled = true;
+  $("stage").hidden = true; $("empty").hidden = false; $("slice").disabled = true; lastCont = {};
   $("list").innerHTML = ""; $("extra").innerHTML = ""; $("actions").hidden = true;
   refreshJobs();
   const tick = async () => {
@@ -264,7 +276,7 @@ async function showResult(j) {
     const row = document.createElement("div");
     row.className = "s";
     row.innerHTML = `<input type="checkbox" checked><span class="chip" style="background:rgb(${c.join(",")})"></span><span class="n" title="Bấm để nhảy tới cơ quan">${esc(s.name)}</span><span class="cc">${s.cc} cc</span>`;
-    row.querySelector("input").onchange = (e) => { e.target.checked ? view.hidden.delete(s.name) : view.hidden.add(s.name); draw(); };
+    row.querySelector("input").onchange = (e) => { e.target.checked ? view.hidden.delete(s.name) : view.hidden.add(s.name); paintContours(); };
     row.querySelector(".n").onclick = () => { const ctr = vol.centers[s.name]; if (ctr) { view.idx = { ...ctr }; syncSlider(); draw(); } };
     list.appendChild(row);
   }
@@ -276,8 +288,8 @@ async function showResult(j) {
   for (const a of ["axial", "coronal", "sagittal"]) view.idx[a] = Math.floor(vol.sizes[a] / 2);
   const first = r.structures[0] && vol.centers[r.structures[0].name];
   if (first) view.idx = { ...first };
-  $("empty").hidden = true; $("img").hidden = false; $("slice").disabled = false;
-  syncSlider(); draw();
+  $("empty").hidden = true; $("stage").hidden = false; $("slice").disabled = false;
+  zoom.fitted = true; applyZoom(); syncSlider(); draw();
 }
 
 function syncSlider() {
@@ -288,29 +300,113 @@ function syncSlider() {
   $("sl").textContent = `${view.idx[view.axis] + 1}/${n}`;
 }
 
-let pending = false, again = false;
+// ---------------- zoom / di chuyển
+const zoom = { z: 1, x: 0, y: 0, fitted: true };
+function baseSize() {  // cỡ ảnh khi "vừa khung", theo tỉ lệ mm thật
+  const g = vol.geom[view.axis], r = $("canvas").getBoundingClientRect();
+  const wmm = g.w * g.px_w, hmm = g.h * g.px_h, k = Math.min((r.width - 16) / wmm, (r.height - 16) / hmm);
+  return { w: wmm * k, h: hmm * k, vw: r.width, vh: r.height };
+}
+function applyZoom() {
+  if (!vol) return;
+  const b = baseSize();
+  if (zoom.fitted) { zoom.z = 1; zoom.x = (b.vw - b.w) / 2; zoom.y = (b.vh - b.h) / 2; }
+  const st = $("stage");
+  // đổi kích thước thật (không dùng scale) để ảnh và nét contour được vẽ lại sắc nét ở mọi mức zoom
+  st.style.width = `${b.w * zoom.z}px`; st.style.height = `${b.h * zoom.z}px`;
+  st.style.transform = `translate(${zoom.x}px, ${zoom.y}px)`;
+  $("zl").textContent = `${Math.round(zoom.z * 100)}%`;
+  $("canvas").classList.toggle("grab", zoom.z > 1);
+}
+function zoomAt(f, cx, cy) {
+  if (!vol) return;
+  if (cx === undefined) { const r = $("canvas").getBoundingClientRect(); cx = r.width / 2; cy = r.height / 2; }
+  const z2 = Math.max(1, Math.min(16, zoom.z * f));
+  if (z2 === zoom.z) return;
+  zoom.x = cx - (cx - zoom.x) * (z2 / zoom.z); zoom.y = cy - (cy - zoom.y) * (z2 / zoom.z);
+  zoom.z = z2; zoom.fitted = z2 === 1;
+  applyZoom();
+}
+const fit = () => { zoom.fitted = true; applyZoom(); };
+$("zin").onclick = () => zoomAt(1.5); $("zout").onclick = () => zoomAt(1 / 1.5); $("zfit").onclick = fit;
+window.addEventListener("resize", applyZoom);
+
+const cv = $("canvas");
+let wheelAcc = 0;
+cv.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const r = cv.getBoundingClientRect();
+  if (e.ctrlKey) { zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX - r.left, e.clientY - r.top); return; }  // chụm 2 ngón / Ctrl+cuộn
+  const d = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;  // trackpad gửi nhiều bước nhỏ -> cộng dồn
+  wheelAcc += d;
+  while (Math.abs(wheelAcc) >= 40) { step(wheelAcc > 0 ? -1 : 1); wheelAcc -= Math.sign(wheelAcc) * 40; }
+}, { passive: false });
+let gz = 1;  // Safari: cử chỉ chụm trên trackpad
+cv.addEventListener("gesturestart", (e) => { e.preventDefault(); gz = zoom.z; });
+cv.addEventListener("gesturechange", (e) => {
+  e.preventDefault(); const r = cv.getBoundingClientRect();
+  zoomAt((gz * e.scale) / zoom.z, e.clientX - r.left, e.clientY - r.top);
+});
+let drag = null;
+cv.addEventListener("pointerdown", (e) => { if (!vol) return; drag = { x: e.clientX, y: e.clientY, ox: zoom.x, oy: zoom.y }; cv.setPointerCapture(e.pointerId); cv.classList.add("grabbing"); });
+cv.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  zoom.x = drag.ox + e.clientX - drag.x; zoom.y = drag.oy + e.clientY - drag.y; zoom.fitted = false; applyZoom();
+});
+const endDrag = () => { drag = null; cv.classList.remove("grabbing"); };
+cv.addEventListener("pointerup", endDrag); cv.addEventListener("pointercancel", endDrag);
+cv.addEventListener("dblclick", fit);
+
+// ---------------- vẽ lát cắt: ảnh CT gốc + contour dạng vector
+let lastCont = {}, imgUrl = null, pending = false, again = false;
 async function draw() {
   if (!vol || !current) return;
   if (pending) { again = true; return; }
   pending = true;
-  const u = `/api/jobs/${current}/slice?axis=${view.axis}&i=${view.idx[view.axis]}&w=${view.w}&hide=${encodeURIComponent([...view.hidden].join(","))}`;
-  const img = $("img");
-  await new Promise((res) => { img.onload = img.onerror = res; img.src = u; });
+  const id = current, axis = view.axis, i = view.idx[axis];
+  try {
+    const [blob, cont] = await Promise.all([
+      fetch(`/api/jobs/${id}/slice?axis=${axis}&i=${i}&w=${view.w}`).then((r) => r.blob()),
+      api(`/api/jobs/${id}/contours?axis=${axis}&i=${i}`),
+    ]);
+    if (id === current && axis === view.axis) {
+      const u = URL.createObjectURL(blob);
+      await new Promise((res) => { const im = $("img"); im.onload = im.onerror = res; im.src = u; });
+      if (imgUrl) URL.revokeObjectURL(imgUrl);
+      imgUrl = u; lastCont = cont; paintContours();
+    }
+  } catch (e) { /* bỏ qua lỗi tạm thời */ }
   pending = false;
   if (again) { again = false; draw(); }
+}
+function paintContours() {
+  if (!vol) return;
+  const g = vol.geom[view.axis], svg = $("ov");
+  svg.setAttribute("viewBox", `0 0 ${g.w} ${g.h}`);
+  let html = "";
+  for (const name of Object.keys(vol.colors)) {
+    const polys = lastCont[name];
+    if (!polys || view.hidden.has(name)) continue;
+    const c = vol.colors[name].join(",");
+    const d = polys.map((p) => "M" + p.map(([x, y]) => `${x} ${y}`).join("L") + "Z").join("");
+    html += `<path d="${d}" fill="rgba(${c},0.16)" stroke="rgb(${c})" stroke-width="1.6" fill-rule="evenodd" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`;
+  }
+  svg.innerHTML = html;
 }
 
 $("slice").oninput = (e) => { view.idx[view.axis] = +e.target.value; $("sl").textContent = `${+e.target.value + 1}/${vol.sizes[view.axis]}`; draw(); };
 const step = (d) => { if (!vol) return; const n = vol.sizes[view.axis]; view.idx[view.axis] = Math.max(0, Math.min(n - 1, view.idx[view.axis] + d)); syncSlider(); draw(); };
-$("canvas").addEventListener("wheel", (e) => { e.preventDefault(); step(e.deltaY > 0 ? -1 : 1); }, { passive: false });
 document.addEventListener("keydown", (e) => {
   if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" && e.target.type !== "range") return;
   if (e.key === "ArrowUp") { e.preventDefault(); step(1); }
   if (e.key === "ArrowDown") { e.preventDefault(); step(-1); }
+  if (e.key === "+" || e.key === "=") zoomAt(1.5);
+  if (e.key === "-") zoomAt(1 / 1.5);
+  if (e.key === "0") fit();
 });
 document.querySelectorAll("[data-axis]").forEach((b) => (b.onclick = () => {
   document.querySelectorAll("[data-axis]").forEach((x) => x.classList.toggle("on", x === b));
-  view.axis = b.dataset.axis; syncSlider(); draw();
+  view.axis = b.dataset.axis; lastCont = {}; fit(); syncSlider(); draw();
 }));
 document.querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => {
   document.querySelectorAll("[data-w]").forEach((x) => x.classList.toggle("on", x === b));
@@ -318,6 +414,10 @@ document.querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => {
 }));
 $("dl").onclick = () => { if (current) location.href = `/api/jobs/${current}/rtstruct`; };
 $("reveal").onclick = () => current && api(`/api/jobs/${current}/reveal`, { method: "POST" }).catch(() => {});
+
+api("/api/info").then((i) => {
+  if (i.accelerator === "cpu") { $("cpuhint").hidden = false; $("fast").checked = true; }
+}).catch(() => {});
 
 refreshJobs().then(() => {
   const first = document.querySelector("#jobs li:not(.muted)");
