@@ -192,6 +192,12 @@ class Job:
     protocol: str = ""  # id phác đồ (vị trí u); rỗng = chọn theo vùng giải phẫu
     intent: str = ""  # curative | palliative
     names: list = field(default_factory=list)  # danh sách OAR cố định của ca (theo phác đồ)
+    # tiến trình
+    plan: list = field(default_factory=list)  # [(tên bước, trọng số)]
+    step: int = 0
+    step_started: float = 0.0
+    model_started: float = 0.0
+    spu: float = 60.0  # giây cho 1 đơn vị trọng số (ước lượng theo máy, tự học sau mỗi ca)
     device_used: str = ""  # thực tế: gpu | mps | cpu (+ ghi chú nếu chuyển CPU)
     saved_elapsed: int = 0
     status: str = "uploading"  # uploading | queued | running | done | error
@@ -228,9 +234,36 @@ class Job:
         p = PROTOCOL_BY_ID.get(self.protocol)
         return f"{p.name if p else self.protocol} · {INTENTS.get(self.intent, '').lower()}"
 
+    def progress(self) -> tuple[int, int | None]:
+        """(% hoàn thành, số giây còn lại dự kiến)."""
+        if self.status == "done":
+            return 100, 0
+        if self.status != "running":
+            return 0, None
+        if not self.plan:  # đang đọc ảnh / định vị vùng chụp: nhích dần tới ~8%
+            el = time.time() - self.started if self.started else 0
+            return int(min(8, 1 + 7 * el / max(5.0, 0.35 * self.spu))), None
+        now = time.time()
+        total = sum(w for _, w in self.plan) or 1.0
+        i = min(self.step, len(self.plan) - 1)
+        done = sum(w for _, w in self.plan[:i])
+        cur = self.plan[i][1]
+        expected = cur * self.spu
+        el = now - self.step_started
+        frac = min(0.95, el / expected) if expected > 0 else 0.0
+        got = done + frac * cur
+        spu = self.spu
+        if got > 0.3 and self.model_started:  # chạy chậm/nhanh hơn dự kiến -> điều chỉnh
+            spu = 0.5 * self.spu + 0.5 * (now - self.model_started) / got
+        remaining = max(0.0, (total - got) * spu) + 5
+        return int(3 + 94 * got / total), int(remaining)
+
     def public(self) -> dict:
         elapsed = (self.finished or time.time()) - self.started if self.started else self.saved_elapsed
+        pct, eta = self.progress()
         return {"id": self.id, "status": self.status, "message": self.message, "site": self.site,
+                "percent": pct, "eta": eta,
+                "step_label": self.plan[min(self.step, len(self.plan) - 1)][0] if self.plan else "",
                 "fast": self.fast, "demo": self.demo, "elapsed": round(elapsed),
                 "device": self.device, "device_used": self.device_used,
                 "protocol": self.protocol, "intent": self.intent, "label": self.label(), "n_files": self.n_files,
@@ -388,6 +421,8 @@ class JobManager:
     def _run(self, job: Job):
         with self._run_lock:
             job.status, job.started = "running", time.time()
+            key = self._speed_key(job)
+            job.spu = float(self._settings().get("speed", {}).get(key, self.SPEED_DEFAULT[key]))
 
             def say(msg):
                 job.message = msg
@@ -412,7 +447,8 @@ class JobManager:
                 else:
                     job.result, job.device_used = _segment(
                         job.ct_dir, job.rtstruct, job.site, job.device, job.fast, say, self._get_segmenter,
-                        job.presets, job.run_spec())
+                        job.presets, job.run_spec(), lambda k, p: self._on_event(job, k, p))
+                self._learn_speed(job)
                 say("Chuẩn bị ảnh để xem")
                 self._drop_viewers()
                 job.viewer = ViewerData.load(job.ct_dir, job.rtstruct)
@@ -429,6 +465,41 @@ class JobManager:
                 job.message = "Lỗi"
             finally:
                 job.finished = time.time()
+
+    SPEED_DEFAULT = {"gpu:full": 10, "gpu:fast": 5, "mps:full": 90, "mps:fast": 25,
+                     "cpu:full": 240, "cpu:fast": 45}
+
+    def _speed_key(self, job: Job) -> str:
+        dev = guess_accelerator() if job.device == "auto" else "cpu"
+        return f"{dev}:{'fast' if job.fast else 'full'}"
+
+    def _on_event(self, job: Job, kind: str, payload):
+        now = time.time()
+        if kind == "plan":
+            job.plan = [tuple(x) for x in payload]
+            job.step, job.step_started, job.model_started = 2, now, now
+            job.spu = float(self._settings().get("speed", {}).get(self._speed_key(job),
+                                                                  self.SPEED_DEFAULT[self._speed_key(job)]))
+        elif kind == "step":
+            job.step, job.step_started = int(payload), now
+
+    def _learn_speed(self, job: Job):
+        """Ghi lại tốc độ thật của máy để lần sau ước tính thời gian chính xác hơn."""
+        if not job.plan or not job.model_started:
+            return
+        total = sum(w for _, w in job.plan)
+        if total <= 0:
+            return
+        measured = (time.time() - job.model_started) / total
+        data = self._settings()
+        speed = data.setdefault("speed", {})
+        key = self._speed_key(job)
+        old = speed.get(key, self.SPEED_DEFAULT[key])
+        speed[key] = round(0.5 * old + 0.5 * measured, 1)
+        try:
+            self._settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        except OSError:
+            pass
 
     def _get_segmenter(self, dev: str):
         seg = self._segmenters.get(dev)
@@ -458,6 +529,8 @@ class JobManager:
                     continue
                 if kind == "msg":
                     say(payload)
+                elif kind in ("plan", "step"):
+                    self._on_event(job, kind, payload)
                 elif kind == "done":
                     return payload["result"], payload["device_used"]
                 elif kind == "error":
@@ -480,7 +553,7 @@ class JobManager:
 
 
 def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter, presets=None,
-             spec=None) -> tuple[dict, str]:
+             spec=None, event=None) -> tuple[dict, str]:
     from .pipeline import run_pipeline
     from .segment import pick_device
 
@@ -491,7 +564,9 @@ def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter, pres
     spec = spec or {}
     report = run_pipeline(ct_dir, rtstruct, seg, site=site, presets=presets or None,
                           names=spec.get("names"), manual=spec.get("manual"), label=spec.get("label"),
-                          progress=lambda m: say(f"{m} ({DEVICE_LABEL.get(used, used)})"))
+                          on_plan=(lambda p: event("plan", p)) if event else None,
+                          on_step=(lambda i: event("step", i)) if event else None,
+                          progress=say)
     if getattr(seg, "fell_back", False) and dev == "mps":
         used = "cpu_fallback"
     result = {
@@ -513,7 +588,8 @@ def _segment_worker(ct_dir, rtstruct, site, device_pref, fast, q, presets=None, 
 
         result, used = _segment(Path(ct_dir), Path(rtstruct), site, device_pref, fast,
                                 lambda m: q.put(("msg", m)),
-                                lambda dev: TotalSegmentatorRunner(device=dev), presets, spec)
+                                lambda dev: TotalSegmentatorRunner(device=dev), presets, spec,
+                                lambda k, p: q.put((k, p)))
         q.put(("done", {"result": result, "device_used": used}))
     except Exception as e:
         logging.error("Lỗi khi khoanh:\n%s", traceback.format_exc())
@@ -572,7 +648,7 @@ def make_handler(manager: JobManager, server_ref: dict):
             if not parts:
                 return self._send(200, (WEB_DIR / "index.html").read_bytes(), "text/html; charset=utf-8")
             if parts == ["api", "catalog"]:
-                from .catalog import GROUPS, GROUP_OF, TASKS, catalog
+                from .catalog import ANATOMY_ORDER, GROUPS, GROUP_OF, TASKS, catalog
                 from .structures import DEFAULT_PRESETS, SITE_NAMES
                 from .ts_labels import TOTAL_PART_OF
 
@@ -591,9 +667,12 @@ def make_handler(manager: JobManager, server_ref: dict):
                                    "tasks": {t: v for t, v in TASKS.items()},
                                    "presets": manager.presets(), "defaults": DEFAULT_PRESETS,
                                    "protocols": protocols, "protocol_names": manager.protocol_names(),
-                                   "intents": INTENTS})
+                                   "intents": INTENTS, "anatomy": ANATOMY_ORDER})
             if parts == ["api", "info"]:
-                return self._json({"accelerator": guess_accelerator()})
+                acc = guess_accelerator()
+                sp = manager._settings().get("speed", {})
+                spu = {m: sp.get(f"{acc}:{m}", JobManager.SPEED_DEFAULT[f"{acc}:{m}"]) for m in ("full", "fast")}
+                return self._json({"accelerator": acc, "sec_per_unit": spu})
             if parts == ["api", "jobs"]:
                 jobs = sorted(manager.jobs.values(), key=lambda j: j.id, reverse=True)
                 return self._json([j.public() for j in jobs])

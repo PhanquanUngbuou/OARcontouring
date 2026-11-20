@@ -6,206 +6,306 @@
 <title>QuanContour</title>
 <style>
 :root {
-  --bg: #f4f5f7; --panel: #ffffff; --ink: #1c2330; --muted: #667085; --line: #e3e6eb;
-  --accent: #0f6fde; --accent-ink: #ffffff; --warn-bg: #fff4e5; --warn-ink: #8a4b00;
-  --ok: #12805c; --err: #c4320a; --viewer: #0b0d10;
+  --bg: #f3f5f8; --panel: #ffffff; --ink: #18202c; --muted: #677489; --line: #e2e6ec; --soft: #f6f8fb;
+  --accent: #0d6efd; --accent-ink: #ffffff; --accent-soft: #e8f0ff;
+  --warn-bg: #fff6e8; --warn-ink: #8a4b00; --warn-line: #f6dcb0;
+  --ok: #12805c; --err: #c4320a; --viewer: #0b0d10; --shadow: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111418; --panel: #1a1e24; --ink: #e8eaee; --muted: #98a2b3; --line: #2b313a;
-    --accent: #4c9cff; --accent-ink: #0b1220; --warn-bg: #3a2a10; --warn-ink: #ffcf8a;
-    --ok: #4cc79a; --err: #ff8a65; --viewer: #000;
+    --bg: #0f1216; --panel: #171b21; --ink: #e8eaee; --muted: #98a2b3; --line: #2a3038; --soft: #1d222a;
+    --accent: #4c9cff; --accent-ink: #0b1220; --accent-soft: #1a2a42;
+    --warn-bg: #2f2410; --warn-ink: #ffcf8a; --warn-line: #5a4318;
+    --ok: #4cc79a; --err: #ff8a65; --viewer: #000; --shadow: none;
   }
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg); color: var(--ink); }
-header { display: flex; align-items: center; gap: 12px; padding: 10px 18px; background: var(--panel);
-  border-bottom: 1px solid var(--line); }
-header h1 { font-size: 16px; margin: 0; }
-header .tag { font-size: 12px; color: var(--warn-ink); background: var(--warn-bg); padding: 2px 8px; border-radius: 999px; }
-header .sp { flex: 1; }
-main { display: grid; grid-template-columns: 320px 1fr; gap: 14px; padding: 14px; height: calc(100vh - 53px); }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
-aside { display: flex; flex-direction: column; gap: 14px; overflow: auto; }
-h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
-label.f { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
-select, button { font: inherit; }
-select { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--ink); }
-button { padding: 8px 12px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+button, select, input { font: inherit; color: inherit; }
+button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; }
+button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 button:disabled { opacity: .5; cursor: default; }
-.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.full { width: 100%; }
-.muted { color: var(--muted); font-size: 12px; }
-.pick { border: 1.5px dashed var(--line); border-radius: 9px; padding: 14px; text-align: center; cursor: pointer; }
+button.ghost { border-color: transparent; background: transparent; color: var(--accent); padding: 6px 8px; }
+select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+
+header { display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--line); height: 56px; }
+.brand { display: flex; align-items: baseline; gap: 8px; }
+.brand b { font-size: 17px; letter-spacing: -.01em; }
+.brand span { color: var(--muted); font-size: 13px; }
+.tag-draft { font-size: 12px; color: var(--warn-ink); background: var(--warn-bg); padding: 2px 9px; border-radius: 999px; border: 1px solid var(--warn-line); }
+header .sp { flex: 1; }
+header .local { color: var(--muted); font-size: 12px; }
+
+main { display: grid; gap: 16px; padding: 16px; height: calc(100vh - 56px); transition: grid-template-columns .25s ease; }
+main.setup { grid-template-columns: minmax(420px, 520px) 1fr; }
+main.case { grid-template-columns: 290px 1fr 280px; }
+main.setup #right { display: none; }
+main.case.running { grid-template-columns: 290px 1fr; }
+main.case.running #right { display: none; }
+.step.final { position: sticky; bottom: -18px; background: var(--panel); margin-bottom: -18px; padding-bottom: 18px; z-index: 2; }
+aside { display: flex; flex-direction: column; gap: 14px; overflow: auto; min-height: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; box-shadow: var(--shadow); }
+.muted { color: var(--muted); font-size: 13px; }
+.small { font-size: 12px; }
+
+/* --- thiết lập ca --- */
+.step { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+.step:first-of-type { border-top: none; padding-top: 0; }
+.num { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.step .body { flex: 1; min-width: 0; }
+.step h3 { margin: 0 0 8px; font-size: 14px; font-weight: 650; }
+.pick { border: 1.5px dashed var(--line); border-radius: 10px; padding: 14px; cursor: pointer; display: flex; align-items: center; gap: 12px; background: var(--soft); }
 .pick:hover { border-color: var(--accent); }
-.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 8px; }
-.bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.pick .ic { font-size: 22px; }
+.pick.ok { border-style: solid; border-color: var(--ok); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; padding: 3px; background: var(--soft); margin-bottom: 10px; }
+.seg button { border: none; background: transparent; padding: 6px 16px; border-radius: 7px; }
+.seg button.on { background: var(--panel); color: var(--accent); font-weight: 650; box-shadow: var(--shadow); }
+.oars { margin-top: 2px; }
+.sec { margin-bottom: 8px; }
+.sec .t { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 2px 8px 2px 6px; border-radius: 6px; background: var(--soft); border: 1px solid var(--line); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.manual { background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-line); border-radius: 9px; padding: 9px 11px; font-size: 12.5px; margin-top: 10px; }
+.manual b { display: block; margin-bottom: 2px; }
+.pnote { margin-top: 8px; }
+.editrow { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+details.adv { margin-top: 2px; }
+details.adv summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+details.adv .inner { padding-top: 10px; display: grid; gap: 8px; }
+.go { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.go .primary { padding: 12px; font-size: 15px; }
+.go .eta { text-align: center; }
+.cpuhint { font-size: 12px; color: var(--warn-ink); }
+
+/* --- ca đang chạy / kết quả --- */
+.casehead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.casetitle { font-size: 16px; font-weight: 650; margin: 2px 0; }
+.bar { height: 8px; background: var(--soft); border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+.bar > div { height: 100%; width: 0; background: var(--accent); transition: width .6s ease; }
+.pct { display: flex; justify-content: space-between; align-items: baseline; margin: 10px 0 6px; }
+.pct b { font-size: 26px; letter-spacing: -.02em; }
+.err { color: var(--err); white-space: pre-wrap; font-size: 13px; }
+.actions { display: grid; gap: 8px; margin-top: 12px; }
+
 .jobs { list-style: none; padding: 0; margin: 0; }
-.jobs li { padding: 8px; border-radius: 7px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
+.jobs li { padding: 8px 10px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.jobs li:hover, .jobs li.sel { background: var(--soft); }
 .jobs li > span:last-child { white-space: nowrap; }
-.jobs li:hover, .jobs li.sel { background: var(--bg); }
-.st-done { color: var(--ok); } .st-error { color: var(--err); } .st-running, .st-queued { color: var(--accent); }
-section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-height: 0; }
-.stage { background: var(--viewer); border-radius: 10px; position: relative; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.st-done { color: var(--ok); } .st-error { color: var(--err); } .st-running, .st-queued, .st-uploading { color: var(--accent); }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 10px; }
+
+/* --- khung xem --- */
+.stagewrap { background: var(--viewer); border-radius: 12px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .toolbar { display: flex; gap: 6px; padding: 8px; align-items: center; flex-wrap: wrap; background: rgba(255,255,255,.04); }
-.toolbar button { background: transparent; color: #cfd6e0; border-color: #343b46; padding: 5px 10px; }
+.toolbar button, .slider button { background: transparent; color: #cfd6e0; border-color: #343b46; padding: 5px 11px; }
 .toolbar button.on { background: #2b3644; color: #fff; border-color: #4c9cff; }
 .toolbar .sp { flex: 1; }
 .canvas { flex: 1; position: relative; min-height: 0; overflow: hidden; touch-action: none; }
 .canvas.grab { cursor: grab; } .canvas.grabbing { cursor: grabbing; }
-.canvas .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-#stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #9aa4b2; text-align: center; padding: 24px; }
+.placeholder .big { font-size: 46px; font-weight: 700; color: #e8eaee; letter-spacing: -.02em; }
+.placeholder .bar { width: min(420px, 80%); background: #1b2028; border-color: #2a313b; }
+#stage { position: absolute; left: 0; top: 0; }
 #stage img, #stage svg { position: absolute; inset: 0; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
-#stage img { image-rendering: auto; }
 #stage svg { overflow: visible; pointer-events: none; }
-.zoom { display: flex; gap: 4px; align-items: center; color: #cfd6e0; font-size: 12px; }
-.zoom span { min-width: 44px; text-align: center; }
 .slider { display: flex; gap: 10px; align-items: center; padding: 8px 12px; color: #cfd6e0; font-size: 12px; }
 .slider input { flex: 1; }
-.empty { color: #8b95a5; text-align: center; padding: 40px; }
-.structs { overflow: auto; }
-.structs .s { display: flex; align-items: center; gap: 8px; padding: 5px 4px; border-radius: 6px; }
-.structs .s:hover { background: var(--bg); }
-.structs .chip { width: 12px; height: 12px; border-radius: 3px; flex: none; }
-.structs .n { flex: 1; cursor: pointer; }
-.structs .cc { color: var(--muted); font-size: 12px; }
-.note { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-top: 10px; }
-.err { color: var(--err); white-space: pre-wrap; }
-.seg { display: flex; gap: 0; }
-.seg button { flex: 1; border-radius: 0; }
-.seg button:first-child { border-radius: 7px 0 0 7px; } .seg button:last-child { border-radius: 0 7px 7px 0; border-left: none; }
-.seg button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
-.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.chips span { font-size: 11px; padding: 1px 6px; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); }
-.preset { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 6px; }
-.preset .muted { flex: 1; }
-.linkbtn { border: none; background: none; color: var(--accent); padding: 2px 0; font-weight: 600; cursor: pointer; }
+.hint { padding: 0 12px 8px; color: #7d8898; font-size: 11.5px; }
+.zoom { display: flex; gap: 4px; align-items: center; }
+.zoom span { min-width: 44px; text-align: center; }
+
+#right { overflow: auto; min-height: 0; }
+.slist .sec .t { margin-top: 10px; }
+.srow { display: flex; align-items: center; gap: 8px; padding: 4px 4px; border-radius: 6px; font-size: 13px; }
+.srow:hover { background: var(--soft); }
+.srow .n { flex: 1; cursor: pointer; }
+.srow .cc { color: var(--muted); font-size: 12px; }
+.srow .sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+footer.lic { font-size: 11px; color: var(--muted); text-align: center; padding: 4px 0 0; }
+footer.lic button { font-size: 11px; padding: 0; border: none; background: none; color: var(--muted); text-decoration: underline; }
+
+/* --- hộp chọn cơ quan --- */
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
-.dialog { background: var(--panel); color: var(--ink); border-radius: 12px; width: min(920px, 100%); max-height: 92vh; display: flex; flex-direction: column; border: 1px solid var(--line); }
-.dhead, .dfoot { display: flex; align-items: center; gap: 8px; padding: 12px 16px; }
+.dialog { background: var(--panel); border-radius: 14px; width: min(940px, 100%); max-height: 92vh; display: flex; flex-direction: column; border: 1px solid var(--line); }
+.dhead, .dfoot { display: flex; align-items: center; gap: 8px; padding: 14px 18px; }
 .dhead { border-bottom: 1px solid var(--line); } .dfoot { border-top: 1px solid var(--line); flex-wrap: wrap; }
 .dhead h2 { font-size: 15px; text-transform: none; letter-spacing: 0; color: var(--ink); margin: 0; flex: 1; }
-.dtabs { display: flex; gap: 6px; padding: 10px 16px 0; flex-wrap: wrap; }
+.dtabs { display: flex; gap: 6px; padding: 10px 18px 0; flex-wrap: wrap; }
 .dtabs button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.dsearch { margin: 10px 16px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--ink); font: inherit; }
-.mlist { overflow: auto; padding: 0 16px 12px; columns: 3 240px; column-gap: 18px; }
-.mgroup { break-inside: avoid; margin-bottom: 12px; }
-.mgroup h3 { font-size: 12px; color: var(--muted); margin: 8px 0 4px; display: flex; justify-content: space-between; }
-.mitem { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 13px; }
-.mitem .chip { width: 10px; height: 10px; border-radius: 2px; flex: none; }
-.tag { font-size: 10px; padding: 0 5px; border-radius: 4px; background: var(--bg); color: var(--muted); white-space: nowrap; }
-.tag.cost { background: var(--warn-bg); color: var(--warn-ink); }
-.dcost { font-size: 12px; color: var(--muted); flex: 1 1 100%; }
-@media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } section.view { grid-template-columns: 1fr; } .stage { min-height: 70vh; } }
+.dsearch { margin: 12px 18px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.mlist { overflow: auto; padding: 0 18px 12px; columns: 3 240px; column-gap: 22px; }
+.mgroup { break-inside: avoid; margin-bottom: 14px; }
+.mgroup h3 { font-size: 12px; color: var(--muted); margin: 6px 0 4px; display: flex; justify-content: space-between; text-transform: uppercase; letter-spacing: .04em; }
+.mgroup h3 button { font-size: 11px; padding: 0; border: none; background: none; color: var(--accent); text-transform: none; letter-spacing: 0; }
+.mitem { display: flex; align-items: center; gap: 7px; padding: 2px 0; font-size: 13px; cursor: pointer; }
+.tag { font-size: 10px; padding: 0 6px; border-radius: 4px; white-space: nowrap; background: var(--warn-bg); color: var(--warn-ink); }
+.dcost { font-size: 13px; flex: 1; }
+@media (max-width: 1000px) { main.setup, main.case { grid-template-columns: 1fr; height: auto; } .stagewrap { min-height: 70vh; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>QuanContour</h1>
-  <span class="tag">Bản nháp AI · bác sĩ phải duyệt</span>
+  <div class="brand"><b>QuanContour</b><span>Khoanh OAR tự động</span></div>
+  <span class="tag-draft">Bản nháp · bác sĩ phải duyệt</span>
   <span class="sp"></span>
-  <span class="muted">Chạy trên máy này · ảnh không gửi ra Internet</span>
-  <button id="quit" title="Tắt app">Thoát</button>
+  <span class="local">Chạy trên máy này · ảnh không gửi ra Internet</span>
+  <button id="quit">Thoát</button>
 </header>
-<main>
-  <aside>
-    <div class="card">
-      <h2>Ca mới</h2>
-      <div class="pick" id="pick">
-        <div><b>Chọn thư mục CT</b></div>
-        <div class="muted">Thư mục DICOM export từ Monaco / PACS. Nhiều series cũng được, app tự lấy series CT.</div>
+
+<main id="main" class="setup">
+  <aside id="left">
+    <!-- ======== THIẾT LẬP CA ======== -->
+    <div class="card" id="setup">
+      <div class="step">
+        <div class="num">1</div>
+        <div class="body">
+          <h3>Ảnh CT mô phỏng</h3>
+          <div class="pick" id="pick"><span class="ic">📁</span>
+            <div><b id="pickTitle">Chọn thư mục CT</b><div class="muted" id="picked">Thư mục DICOM export từ Monaco / PACS (nhiều series cũng được)</div></div>
+          </div>
+          <input type="file" id="files" webkitdirectory multiple hidden>
+        </div>
       </div>
-      <input type="file" id="files" webkitdirectory multiple hidden>
-      <div id="picked" class="muted" style="margin-top:6px"></div>
-      <label class="f">Mục đích xạ trị</label>
-      <div class="seg" id="intent"><button data-intent="curative" class="on">Triệt căn</button><button data-intent="palliative">Triệu chứng</button></div>
-      <label class="f" for="proto">Vị trí xạ trị</label>
-      <select id="proto"><option value="">— Chọn vị trí u —</option></select>
-      <div id="protoBox" hidden>
-        <div class="preset"><span><b id="pcount"></b> OAR sẽ khoanh</span><button class="linkbtn" id="editProto">Mở rộng / chỉnh sửa…</button></div>
-        <div class="chips" id="pchips"></div>
-        <div class="note" id="pmanual"></div>
-        <div class="muted" id="pnote" style="margin-top:6px"></div>
-        <div class="muted" id="pcost" style="margin-top:4px"></div>
+      <div class="step">
+        <div class="num">2</div>
+        <div class="body">
+          <h3>Phác đồ</h3>
+          <div class="seg" id="intent"><button data-intent="curative" class="on">Triệt căn</button><button data-intent="palliative">Triệu chứng</button></div>
+          <select id="proto"><option value="">— Chọn vị trí u —</option></select>
+        </div>
       </div>
-      <div id="siteBox" hidden>
-        <label class="f" for="site">Vùng giải phẫu</label>
-        <select id="site">
-          <option value="auto">Tự nhận diện</option>
-          <option value="thorax">Ngực / vú</option>
-          <option value="abdomen">Bụng</option>
-          <option value="pelvis">Tiểu khung</option>
-          <option value="headneck">Đầu cổ</option>
-        </select>
-        <div class="preset"><span class="muted" id="presetline">–</span><button class="linkbtn" id="editPreset">Chọn cơ quan…</button></div>
+      <div class="step" id="oarStep" hidden>
+        <div class="num">3</div>
+        <div class="body">
+          <h3 id="oarTitle">OAR sẽ khoanh</h3>
+          <div class="oars" id="oars"></div>
+          <div class="manual" id="pmanual"></div>
+          <div class="muted small pnote" id="pnote"></div>
+          <div class="editrow"><span class="muted small" id="editedTag"></span><button id="editProto">Mở rộng / chỉnh sửa danh sách…</button></div>
+        </div>
       </div>
-      <label class="f" for="device">Bộ xử lý</label>
-      <select id="device">
-        <option value="auto">Tự động (chip đồ hoạ nếu có)</option>
-        <option value="cpu">Chỉ dùng CPU</option>
-      </select>
-      <div class="note" id="cpuhint" hidden>Máy này <b>không có card đồ hoạ</b> phù hợp: chế độ đầy đủ có thể mất 30–60 phút/ca.
-        Nên tích <b>Chế độ nhanh</b> (khoảng 3–8 phút) để xem thử, ca cần chính xác thì chạy trên máy có GPU.</div>
-      <label class="f"><input type="checkbox" id="fast"> Chế độ nhanh (kém chính xác hơn, chỉ để thử)</label>
-      <div class="row" style="margin-top:12px">
-        <button class="primary" id="run" disabled>Khoanh OAR</button>
-        <button id="demo" title="Ảnh CT mẫu công khai, không phải dữ liệu bệnh nhân">Chạy ảnh mẫu</button>
+      <div class="step" id="siteStep" hidden>
+        <div class="num">3</div>
+        <div class="body">
+          <h3>Vùng giải phẫu</h3>
+          <select id="site">
+            <option value="auto">Tự nhận diện</option>
+            <option value="thorax">Ngực / vú</option>
+            <option value="abdomen">Bụng</option>
+            <option value="pelvis">Tiểu khung</option>
+            <option value="headneck">Đầu cổ</option>
+          </select>
+          <div class="editrow"><span class="muted small" id="presetline"></span><button id="editPreset">Chọn cơ quan…</button></div>
+        </div>
       </div>
-      <div id="up" hidden><div class="bar"><div id="upbar"></div></div><div class="muted" id="uptext"></div></div>
+      <div class="step final">
+        <div class="num">✓</div>
+        <div class="body">
+          <details class="adv"><summary>Tuỳ chọn nâng cao</summary>
+            <div class="inner">
+              <label class="muted small" for="device">Bộ xử lý</label>
+              <select id="device"><option value="auto">Tự động (dùng card đồ hoạ nếu có)</option><option value="cpu">Chỉ dùng CPU</option></select>
+              <label class="small"><input type="checkbox" id="fast"> Chế độ nhanh (kém chính xác hơn, để xem thử)</label>
+            </div>
+          </details>
+          <div class="cpuhint" id="cpuhint" hidden>Máy không có card đồ hoạ: đã bật sẵn chế độ nhanh.</div>
+          <div class="go">
+            <button class="primary" id="run">Bắt đầu khoanh OAR</button>
+            <div class="muted small eta" id="preEta"></div>
+            <button class="ghost small" id="demo" title="Ảnh CT mẫu công khai, không phải dữ liệu bệnh nhân">Thử với ảnh CT mẫu</button>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- ======== CA ĐANG CHẠY / KẾT QUẢ ======== -->
+    <div class="card" id="casePanel" hidden>
+      <div class="casehead"><button class="ghost" id="newCase">← Ca mới</button><span class="muted small" id="caseWhen"></span></div>
+      <div class="casetitle" id="caseTitle"></div>
+      <div class="muted small" id="caseMeta"></div>
+      <div id="caseRun">
+        <div class="pct"><b id="cpct">0%</b><span class="muted" id="ceta"></span></div>
+        <div class="bar"><div id="cbar"></div></div>
+        <div class="muted small" id="cstep" style="margin-top:8px"></div>
+      </div>
+      <div class="err" id="caseErr" hidden></div>
+      <div class="actions" id="caseActions" hidden>
+        <button class="primary" id="dl">Tải RTSTRUCT (.dcm)</button>
+        <button id="reveal">Mở thư mục kết quả</button>
+      </div>
+    </div>
+
     <div class="card">
-      <h2>Các ca đã chạy</h2>
+      <h2>Ca gần đây</h2>
       <ul class="jobs" id="jobs"><li class="muted">Chưa có ca nào</li></ul>
     </div>
+    <footer class="lic"><button id="lic">Thông tin & giấy phép</button></footer>
   </aside>
 
-  <section class="view">
-    <div class="stage">
-      <div class="toolbar">
-        <button data-axis="axial" class="on">Axial</button>
-        <button data-axis="coronal">Coronal</button>
-        <button data-axis="sagittal">Sagittal</button>
-        <span class="sp"></span>
-        <button data-w="soft" class="on">Phần mềm</button>
-        <button data-w="lung">Phổi</button>
-        <button data-w="bone">Xương</button>
-      </div>
-      <div class="canvas" id="canvas"><div class="empty" id="empty">Chọn thư mục CT hoặc bấm “Chạy ảnh mẫu” để bắt đầu.</div>
-        <div id="stage" hidden><img id="img" alt=""><svg id="ov" preserveAspectRatio="none"></svg></div></div>
-      <div class="slider"><span id="sl">–</span><input type="range" id="slice" min="0" max="0" value="0" disabled>
-        <span class="zoom"><button id="zout" title="Thu nhỏ (−)">−</button><span id="zl">100%</span><button id="zin" title="Phóng to (+)">+</button><button id="zfit" title="Vừa khung (0)">Vừa khung</button></span></div>
-      <div class="slider muted" style="padding-top:0;color:#8b95a5">Cuộn / ↑↓: đổi lát · Chụm 2 ngón hoặc Ctrl+cuộn: zoom · Kéo: di chuyển ảnh · Bấm đúp: vừa khung</div>
+  <section class="stagewrap">
+    <div class="toolbar" id="toolbar" hidden>
+      <button data-axis="axial" class="on">Axial</button>
+      <button data-axis="coronal">Coronal</button>
+      <button data-axis="sagittal">Sagittal</button>
+      <span class="sp"></span>
+      <button data-w="soft" class="on">Phần mềm</button>
+      <button data-w="lung">Phổi</button>
+      <button data-w="bone">Xương</button>
     </div>
-    <div class="card structs">
-      <h2>Cấu trúc</h2>
-      <div id="status" class="muted">–</div>
-      <div class="row" id="actions" style="margin:10px 0" hidden>
-        <button class="primary full" id="dl">Tải RTSTRUCT (.dcm)</button>
-        <button class="full" id="reveal">Mở thư mục kết quả</button>
+    <div class="canvas" id="canvas">
+      <div class="placeholder" id="ph">
+        <div id="phText">Chọn ảnh CT và phác đồ ở bên trái, rồi bấm <b>Bắt đầu khoanh OAR</b>.</div>
       </div>
-      <div id="list"></div>
-      <div id="extra"></div>
+      <div class="placeholder" id="phRun" hidden>
+        <div class="big" id="bpct">0%</div>
+        <div class="bar"><div id="bbar"></div></div>
+        <div id="bstep"></div>
+        <div class="small" id="beta"></div>
+      </div>
+      <div id="stage" hidden><img id="img" alt=""><svg id="ov" preserveAspectRatio="none"></svg></div>
+    </div>
+    <div id="vfoot" hidden>
+      <div class="slider"><span id="sl">–</span><input type="range" id="slice" min="0" max="0" value="0">
+        <span class="zoom"><button id="zout" title="Thu nhỏ (−)">−</button><span id="zl">100%</span><button id="zin" title="Phóng to (+)">+</button><button id="zfit" title="Vừa khung (0)">Vừa khung</button></span></div>
+      <div class="hint">Cuộn / ↑↓: đổi lát · Chụm 2 ngón hoặc Ctrl+cuộn: zoom · Kéo: di chuyển · Bấm đúp: vừa khung</div>
     </div>
   </section>
+
+  <aside id="right">
+    <div class="card">
+      <h2>Cấu trúc</h2>
+      <div class="slist" id="list"></div>
+      <div id="extra"></div>
+    </div>
+  </aside>
 </main>
 
 <div class="modal" id="modal" hidden>
   <div class="dialog" role="dialog" aria-label="Chọn cơ quan">
-    <div class="dhead"><h2 id="mtitle">Chọn cơ quan cần khoanh cho từng vùng</h2><button id="mclose" aria-label="Đóng">✕</button></div>
+    <div class="dhead"><h2 id="mtitle">Chọn cơ quan</h2><button id="mclose" aria-label="Đóng">✕</button></div>
     <div class="dtabs" id="mtabs"></div>
-    <input class="dsearch" id="msearch" placeholder="Tìm cơ quan (ví dụ: gan, Parotid, rib…)">
+    <input class="dsearch" id="msearch" placeholder="Tìm cơ quan (ví dụ: Parotid, Kidney, Femur…)">
     <div class="mlist" id="mlist"></div>
     <div class="dfoot">
       <div class="dcost" id="mcost"></div>
-      <span class="muted" style="flex:1">Nhãn <span class="tag cost">+ thời gian</span> = cần chạy thêm 1 phần model. Các cơ quan khác trong cùng phần gần như không tốn thêm.</span>
       <button id="mreset">Về mặc định</button><button id="mcancel">Huỷ</button><button id="muse" hidden>Dùng cho ca này</button><button class="primary" id="msave">Lưu</button>
     </div>
   </div>
 </div>
 
+<div class="modal" id="licModal" hidden>
+  <div class="dialog" style="width:min(560px,100%)">
+    <div class="dhead"><h2>Thông tin & giấy phép</h2><button id="licClose" aria-label="Đóng">✕</button></div>
+    <div style="padding:16px 18px" class="muted">
+      <p>QuanContour là công cụ hỗ trợ nghiên cứu, tạo contour <b>bản nháp</b>; bác sĩ phải duyệt và chỉnh sửa trước khi dùng lập kế hoạch.</p>
+      <p>Phần mềm có sử dụng các thành phần mã nguồn mở theo giấy phép của từng thành phần, gồm mô hình phân vùng TotalSegmentator (Apache-2.0), nnU-Net, PyTorch, SimpleITK, pydicom, pynetdicom, rt-utils. Chi tiết trong README của mã nguồn.</p>
+    </div>
+  </div>
+</div>
 <script>
 const $ = (id) => document.getElementById(id);
 const api = async (path, opts = {}) => {
@@ -215,73 +315,195 @@ const api = async (path, opts = {}) => {
   return j;
 };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const fmtTime = (s) => (s >= 60 ? `${Math.floor(s / 60)} phút ${s % 60}s` : `${s}s`);
+const fmtTime = (s) => (s >= 60 ? `${Math.floor(s / 60)} phút ${s % 60 ? (s % 60) + "s" : ""}`.trim() : `${s}s`);
+const fmtEta = (s) => (s == null ? "" : s < 60 ? "Còn dưới 1 phút" : `Còn khoảng ${Math.round(s / 60)} phút`);
 
-let picked = [];
-let current = null;          // id ca đang xem
-let vol = null;              // thông tin volume của ca đang xem
+let CAT = null, INFO = { accelerator: "cpu", sec_per_unit: { full: 240, fast: 45 } };
+let picked = [], current = null, vol = null, caseNames = null, intent = "curative";
 const view = { axis: "axial", w: "soft", idx: { axial: 0, coronal: 0, sagittal: 0 }, hidden: new Set() };
+const labelDevice = { gpu: "GPU NVIDIA", mps: "chip đồ hoạ", cpu: "CPU", cpu_fallback: "CPU" };
+const labelSite = { auto: "Tự nhận diện", thorax: "Ngực", abdomen: "Bụng", pelvis: "Tiểu khung", headneck: "Đầu cổ" };
+const labelStatus = { uploading: "đang nạp", queued: "chờ", running: "đang chạy", done: "xong", error: "lỗi" };
 
-// ---------------- chọn file & tải lên
+// ---------------- sắp xếp OAR theo giải phẫu
+function anatSections(names) {
+  const set = new Set(names), used = new Set(), out = [];
+  for (const [title, order] of CAT.anatomy) {
+    const list = order.filter((n) => set.has(n));
+    list.forEach((n) => used.add(n));
+    if (list.length) out.push({ title, names: list });
+  }
+  const vert = names.filter((n) => !used.has(n) && n.startsWith("Vertebrae_"));
+  vert.forEach((n) => used.add(n));
+  const rest = names.filter((n) => !used.has(n)).sort((a, b) => a.localeCompare(b));
+  if (rest.length) out.push({ title: "Khác", names: rest });
+  if (vert.length) out.push({ title: "Đốt sống", names: vert, collapse: true });
+  return out;
+}
+const color = (n) => (CAT.byName[n] ? `rgb(${CAT.byName[n].color.join(",")})` : "#999");
+function chipsHtml(names) {
+  return anatSections(names).map((s) => `<div class="sec"><div class="t">${esc(s.title)}</div><div class="chips">` +
+    (s.collapse ? `<span class="chip"><span class="dot" style="background:${color(s.names[0])}"></span>${s.names.length} đốt sống</span>`
+      : s.names.map((n) => `<span class="chip"><span class="dot" style="background:${color(n)}"></span>${esc(n)}</span>`).join("")) +
+    "</div></div>").join("");
+}
+
+// ---------------- ước tính thời gian
+function costOf(names, fast) {
+  const parts = new Set(), tasks = new Set();
+  for (const n of names) {
+    const it = CAT.byName[n];
+    if (!it) continue;
+    if (it.task === "total") it.parts.forEach((p) => parts.add(p)); else tasks.add(it.task);
+  }
+  let units = 0.25 + (parts.size ? (fast ? 1 : parts.size) : 0);
+  tasks.forEach((t) => (units += CAT.tasks[t].cost));
+  return { parts, tasks, units };
+}
+function minutesFor(names) {
+  const fast = $("fast").checked;
+  const spu = INFO.sec_per_unit[fast ? "fast" : "full"];
+  return Math.max(1, Math.round((costOf(names, fast).units * spu + 20) / 60));
+}
+
+// ---------------- thiết lập ca
+async function loadCatalog() {
+  CAT = await api("/api/catalog");
+  CAT.byName = Object.fromEntries(CAT.items.map((i) => [i.name, i]));
+  CAT.protoById = Object.fromEntries(CAT.protocols.map((p) => [p.id, p]));
+  const sel = $("proto");
+  for (const g of [...new Set(CAT.protocols.map((p) => p.group))]) {
+    const og = document.createElement("optgroup");
+    og.label = g;
+    for (const p of CAT.protocols.filter((x) => x.group === g)) og.appendChild(new Option(p.name, p.id));
+    sel.appendChild(og);
+  }
+  const og = document.createElement("optgroup");
+  og.label = "Khác";
+  og.appendChild(new Option("Tự chọn theo vùng giải phẫu", "__site"));
+  sel.appendChild(og);
+  onProtoChange();
+}
+function onProtoChange() {
+  const v = $("proto").value;
+  $("oarStep").hidden = !v || v === "__site";
+  $("siteStep").hidden = v !== "__site";
+  caseNames = v && v !== "__site" ? [...CAT.protocol_names[v][intent]] : null;
+  renderSetup();
+}
+function currentNames() {
+  const v = $("proto").value;
+  if (v && v !== "__site") return caseNames || [];
+  if (v === "__site") {
+    const site = $("site").value;
+    if (site === "auto") return null;
+    return CAT.presets[site] || [];
+  }
+  return [];
+}
+function renderSetup() {
+  if (!CAT) return;
+  const v = $("proto").value;
+  if (v && v !== "__site") {
+    const p = CAT.protoById[v];
+    const edited = JSON.stringify(caseNames) !== JSON.stringify(CAT.protocol_names[v][intent]);
+    $("oarTitle").textContent = `OAR sẽ khoanh (${caseNames.length})`;
+    $("oars").innerHTML = chipsHtml(caseNames);
+    $("pmanual").innerHTML = p.manual.length ? `<b>Cần bác sĩ vẽ thêm</b>${p.manual.map(esc).join(" · ")}` : "";
+    $("pmanual").hidden = !p.manual.length;
+    $("pnote").textContent = p.note || "";
+    $("editedTag").textContent = edited ? "Đã chỉnh riêng cho ca này" : "";
+  }
+  if (v === "__site") {
+    const site = $("site").value;
+    $("presetline").textContent = site === "auto" ? "Dùng danh sách của vùng được nhận ra" : `${(CAT.presets[site] || []).length} cơ quan`;
+  }
+  const names = currentNames();
+  $("preEta").textContent = names && names.length ? `Dự kiến khoảng ${minutesFor(names)} phút trên máy này` : "";
+  $("run").disabled = !picked.length || !v;
+  $("run").textContent = !picked.length ? "Chọn ảnh CT để bắt đầu" : !v ? "Chọn vị trí u để bắt đầu" : "Bắt đầu khoanh OAR";
+}
+$("proto").addEventListener("change", onProtoChange);
+$("site").addEventListener("change", renderSetup);
+$("fast").addEventListener("change", renderSetup);
+document.querySelectorAll("[data-intent]").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll("[data-intent]").forEach((x) => x.classList.toggle("on", x === b));
+  intent = b.dataset.intent; onProtoChange();
+}));
 $("pick").onclick = () => $("files").click();
 $("files").onchange = (e) => {
   picked = [...e.target.files].filter((f) => !f.name.startsWith("."));
   const mb = picked.reduce((a, f) => a + f.size, 0) / 1e6;
-  $("picked").textContent = picked.length ? `${picked.length} file · ${mb.toFixed(0)} MB` : "";
-  $("run").disabled = !picked.length;
+  const folder = picked[0] && picked[0].webkitRelativePath ? picked[0].webkitRelativePath.split("/")[0] : "";
+  $("pickTitle").textContent = picked.length ? (folder || "Đã chọn thư mục") : "Chọn thư mục CT";
+  $("picked").textContent = picked.length ? `${picked.length} file · ${mb.toFixed(0)} MB · bấm để đổi` : "Thư mục DICOM export từ Monaco / PACS";
+  $("pick").classList.toggle("ok", picked.length > 0);
+  renderSetup();
 };
-
 function caseSpec() {
   const v = $("proto").value;
-  if (v && v !== "__site") return { protocol: v, intent: view_.intent, names: caseNames };
+  if (v && v !== "__site") return { protocol: v, intent, names: caseNames };
   return { site: $("site").value };
 }
+
+// ---------------- chạy ca
+const uploadState = {};  // id -> {done, total}
+const preEstimate = {};  // id -> số phút dự kiến lúc bấm chạy
 $("run").onclick = async () => {
-  if (!$("proto").value) { alert("Chọn vị trí xạ trị (hoặc 'Tự chọn theo vùng giải phẫu')."); return; }
-  $("run").disabled = true; $("demo").disabled = true;
+  $("run").disabled = true;
   try {
     const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ ...caseSpec(), fast: $("fast").checked, device: $("device").value }) });
-    $("up").hidden = false;
-    let done = 0;
-    const queue = [...picked];
+    const files = [...picked];
+    uploadState[job.id] = { done: 0, total: files.length };
+    const nm = currentNames(); if (nm && nm.length) preEstimate[job.id] = minutesFor(nm);
+    select(job.id);
+    const queue = [...files];
     const worker = async () => {
       while (queue.length) {
         const f = queue.shift();
         await api(`/api/jobs/${job.id}/files?name=${encodeURIComponent(f.name)}`, { method: "PUT", body: f });
-        done++;
-        $("upbar").style.width = `${(100 * done) / picked.length}%`;
-        $("uptext").textContent = `Đang nạp ${done}/${picked.length} file`;
+        uploadState[job.id].done++;
       }
     };
     await Promise.all(Array.from({ length: 6 }, worker));
     await api(`/api/jobs/${job.id}/start`, { method: "POST" });
-    $("uptext").textContent = "Đã nạp xong, đang khoanh…";
-    select(job.id);
+    delete uploadState[job.id];
   } catch (e) {
     alert("Lỗi: " + e.message);
-  } finally {
-    $("run").disabled = !picked.length; $("demo").disabled = false;
-    setTimeout(() => ($("up").hidden = true), 1500);
-  }
+  } finally { renderSetup(); }
 };
-
 $("demo").onclick = async () => {
   try {
-    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ ...($("proto").value ? caseSpec() : { site: "auto" }), fast: $("fast").checked, demo: true, device: $("device").value }) });
+    const spec = $("proto").value ? caseSpec() : { site: "auto" };
+    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ ...spec, fast: $("fast").checked, demo: true, device: $("device").value }) });
+    const nm = currentNames(); if (spec.protocol && nm && nm.length) preEstimate[job.id] = minutesFor(nm);
     select(job.id);
   } catch (e) { alert("Lỗi: " + e.message); }
 };
-
+$("newCase").onclick = () => setMode("setup");
 $("quit").onclick = async () => {
-  if (!confirm("Tắt app QuanContour?")) return;
+  if (!confirm("Tắt QuanContour?")) return;
   await api("/api/quit", { method: "POST" }).catch(() => {});
-  document.body.innerHTML = '<div class="empty">Đã tắt app. Có thể đóng tab này.</div>';
+  document.body.innerHTML = '<div style="padding:60px;text-align:center" class="muted">Đã tắt QuanContour. Có thể đóng tab này.</div>';
 };
+$("lic").onclick = () => ($("licModal").hidden = false);
+$("licClose").onclick = () => ($("licModal").hidden = true);
+
+// ---------------- chế độ hiển thị
+function setMode(mode) {
+  $("main").className = mode;
+  $("setup").hidden = mode !== "setup";
+  $("casePanel").hidden = mode !== "case";
+  if (mode === "setup") {
+    current = null; vol = null; clearInterval(poll);
+    $("stage").hidden = true; $("toolbar").hidden = true; $("vfoot").hidden = true;
+    $("phRun").hidden = true; $("ph").hidden = false;
+    refreshJobs();
+  }
+  setTimeout(applyZoom, 300);
+}
 
 // ---------------- danh sách ca
-const labelDevice = { gpu: "GPU NVIDIA", mps: "chip đồ hoạ", cpu: "CPU", cpu_fallback: "CPU (chip đồ hoạ lỗi)" };
-const labelSite = { auto: "Tự nhận diện", thorax: "Ngực", abdomen: "Bụng", pelvis: "Tiểu khung", headneck: "Đầu cổ" };
-const labelStatus = { uploading: "đang nạp", queued: "chờ", running: "đang chạy", done: "xong", error: "lỗi" };
 async function refreshJobs() {
   const jobs = await api("/api/jobs").catch(() => null);
   if (!jobs) return;
@@ -290,67 +512,99 @@ async function refreshJobs() {
     const li = document.createElement("li");
     if (j.id === current) li.className = "sel";
     const when = j.id.slice(0, 13).replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, "$3/$2 $4:$5");
-    const sites = (j.result.sites || [j.site]).map((s) => labelSite[s] || s).join(", ");
-    const took = j.status === "done" && j.elapsed ? ` · ${fmtTime(j.elapsed)}` : "";
-    li.innerHTML = `<span>${esc(when)} · ${esc((j.demo ? "Ảnh mẫu" : "") + (j.label ? (j.demo ? " · " : "") + j.label : (j.demo ? "" : sites)))}<span class="muted">${esc(took)}${j.device_used ? " · " + esc(labelDevice[j.device_used] || j.device_used) : ""}</span></span><span class="st-${j.status}">${labelStatus[j.status] || j.status}</span>`;
+    const name = j.label || (j.result.sites || [j.site]).map((s) => labelSite[s] || s).join(", ");
+    const st = j.status === "running" ? `${j.percent}%` : labelStatus[j.status] || j.status;
+    li.innerHTML = `<span>${esc(when)} · ${esc((j.demo ? "Ảnh mẫu · " : "") + name)}</span><span class="st-${j.status}">${esc(st)}</span>`;
     li.onclick = () => select(j.id);
     $("jobs").appendChild(li);
   }
 }
 
-// ---------------- theo dõi ca & hiển thị
+// ---------------- theo dõi một ca
 let poll = null;
+function setProgress(pct, stepText, etaText) {
+  $("cpct").textContent = `${pct}%`; $("bpct").textContent = `${pct}%`;
+  $("cbar").style.width = `${pct}%`; $("bbar").style.width = `${pct}%`;
+  $("cstep").textContent = stepText; $("bstep").textContent = stepText;
+  $("ceta").textContent = etaText; $("beta").textContent = etaText;
+}
 async function select(id) {
-  current = id; vol = null; view.hidden.clear();
+  current = id; vol = null; view.hidden.clear(); lastCont = {};
   clearInterval(poll);
-  $("stage").hidden = true; $("empty").hidden = false; $("slice").disabled = true; lastCont = {};
-  $("list").innerHTML = ""; $("extra").innerHTML = ""; $("actions").hidden = true;
-  refreshJobs();
+  setMode("case");
+  current = id;
+  $("stage").hidden = true; $("toolbar").hidden = true; $("vfoot").hidden = true;
+  $("ph").hidden = true; $("phRun").hidden = false;
+  $("caseRun").hidden = false; $("caseErr").hidden = true; $("caseActions").hidden = true;
+  $("list").innerHTML = ""; $("extra").innerHTML = "";
   const tick = async () => {
     const j = await api(`/api/jobs/${id}`).catch(() => null);
     if (!j || id !== current) return;
-    if (j.status === "done") { clearInterval(poll); showResult(j); refreshJobs(); return; }
+    $("caseTitle").textContent = (j.demo ? "Ảnh mẫu · " : "") + (j.label || (j.result.sites || [j.site]).map((s) => labelSite[s] || s).join(", "));
+    $("caseWhen").textContent = j.id.slice(0, 13).replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, "$3/$2/$1 $4:$5");
+    const meta = [];
+    if (j.n_files) meta.push(`${j.n_files} lát CT`);
+    if (j.device_used) meta.push(labelDevice[j.device_used] || j.device_used);
+    if (j.fast) meta.push("chế độ nhanh");
+    $("caseMeta").textContent = meta.join(" · ");
+    $("main").classList.toggle("running", j.status !== "done");
+    if (j.status === "done") { clearInterval(poll); refreshJobs(); showResult(j); return; }
     if (j.status === "error") {
       clearInterval(poll); refreshJobs();
-      $("status").innerHTML = `<span class="err">Lỗi: ${esc(j.error)}</span>`;
-      $("empty").textContent = "Ca này bị lỗi. Xem thông báo bên phải.";
+      $("caseRun").hidden = true; $("caseErr").hidden = false; $("caseErr").textContent = "Không hoàn tất: " + j.error;
+      $("phRun").hidden = true; $("ph").hidden = false; $("phText").textContent = "Ca này không hoàn tất. Xem thông báo bên trái.";
       return;
     }
-    $("status").textContent = `${j.message || labelStatus[j.status]} · ${fmtTime(j.elapsed)}`;
-    $("empty").textContent = `${j.message || "Đang xử lý"}… (${fmtTime(j.elapsed)}). Mỗi ca có thể mất vài phút (CPU: 5–15 phút), có thể làm việc khác trong lúc chờ.`;
+    const up = uploadState[id];
+    if (j.status === "uploading" && up) {
+      const pct = Math.round((3 * up.done) / Math.max(1, up.total));
+      setProgress(pct, `Đang nạp ảnh ${up.done}/${up.total}`, "");
+    } else if (j.status === "queued") {
+      setProgress(0, "Đang chờ ca trước chạy xong", "");
+    } else {
+      const eta = j.eta != null ? fmtEta(j.eta) : preEstimate[id] ? `Dự kiến khoảng ${preEstimate[id]} phút` : "";
+      setProgress(j.percent || 1, j.step_label || j.message || "Đang chuẩn bị", eta);
+    }
   };
   await tick();
-  poll = setInterval(tick, 1500);
+  poll = setInterval(tick, 1000);
 }
 
 async function showResult(j) {
   vol = await api(`/api/jobs/${j.id}/volume`);
   const r = j.result;
-  $("status").innerHTML = `${r.structures.length} cấu trúc · ${j.n_files} lát CT · ${esc(j.label || (r.sites || []).map((s) => labelSite[s] || s).join(", "))}${j.elapsed ? " · " + fmtTime(j.elapsed) : ""}${j.device_used ? " · " + (labelDevice[j.device_used] || j.device_used) : ""}${j.fast ? " · chế độ nhanh" : ""}`;
-  $("actions").hidden = false;
-  const list = $("list");
-  list.innerHTML = "";
-  for (const s of r.structures) {
-    const c = vol.colors[s.name] || [200, 200, 200];
-    const row = document.createElement("div");
-    row.className = "s";
-    row.innerHTML = `<input type="checkbox" checked><span class="chip" style="background:rgb(${c.join(",")})"></span><span class="n" title="Bấm để nhảy tới cơ quan">${esc(s.name)}</span><span class="cc">${s.cc} cc</span>`;
-    row.querySelector("input").onchange = (e) => { e.target.checked ? view.hidden.delete(s.name) : view.hidden.add(s.name); paintContours(); };
-    row.querySelector(".n").onclick = () => { const ctr = vol.centers[s.name]; if (ctr) { view.idx = { ...ctr }; syncSlider(); draw(); } };
-    list.appendChild(row);
+  $("caseRun").hidden = true; $("caseActions").hidden = false;
+  $("caseMeta").textContent += ` · ${r.structures.length} cấu trúc${j.elapsed ? " · " + fmtTime(j.elapsed) : ""}`;
+  const cc = Object.fromEntries(r.structures.map((s) => [s.name, s.cc]));
+  let html = "";
+  for (const sec of anatSections(r.structures.map((s) => s.name))) {
+    html += `<div class="sec"><div class="t">${esc(sec.title)}</div>`;
+    for (const n of sec.names) {
+      const c = vol.colors[n] || [200, 200, 200];
+      html += `<label class="srow"><input type="checkbox" checked data-s="${esc(n)}"><span class="sw" style="background:rgb(${c.join(",")})"></span>` +
+        `<span class="n" data-go="${esc(n)}" title="Bấm để đi tới cơ quan">${esc(n)}</span><span class="cc">${cc[n]} cc</span></label>`;
+    }
+    html += "</div>";
   }
+  $("list").innerHTML = html;
+  $("list").querySelectorAll("input[data-s]").forEach((cb) => (cb.onchange = () => {
+    cb.checked ? view.hidden.delete(cb.dataset.s) : view.hidden.add(cb.dataset.s); paintContours();
+  }));
+  $("list").querySelectorAll("[data-go]").forEach((el) => (el.onclick = (e) => {
+    e.preventDefault(); const ctr = vol.centers[el.dataset.go]; if (ctr) { view.idx = { ...ctr }; syncSlider(); draw(); }
+  }));
   let extra = "";
-  if (r.not_covered && r.not_covered.length) extra += `<div class="note"><b>Bác sĩ tự vẽ (model chưa hỗ trợ):</b><br>${r.not_covered.map(esc).join(", ")}</div>`;
+  if (r.not_covered && r.not_covered.length) extra += `<div class="manual"><b>Cần bác sĩ vẽ thêm</b>${r.not_covered.map(esc).join(" · ")}</div>`;
   const notes = Object.entries(r.notes || {});
-  if (notes.length) extra += `<div class="note"><b>Lưu ý khi duyệt:</b><br>${notes.map(([n, t]) => `<b>${esc(n)}</b>: ${esc(t)}`).join("<br>")}</div>`;
+  if (notes.length) extra += `<div class="muted small" style="margin-top:10px">${notes.map(([n, t]) => `<b>${esc(n)}</b>: ${esc(t)}`).join("<br>")}</div>`;
   $("extra").innerHTML = extra;
   for (const a of ["axial", "coronal", "sagittal"]) view.idx[a] = Math.floor(vol.sizes[a] / 2);
   const first = r.structures[0] && vol.centers[r.structures[0].name];
   if (first) view.idx = { ...first };
-  $("empty").hidden = true; $("stage").hidden = false; $("slice").disabled = false;
-  zoom.fitted = true; applyZoom(); syncSlider(); draw();
+  $("phRun").hidden = true; $("ph").hidden = true;
+  $("stage").hidden = false; $("toolbar").hidden = false; $("vfoot").hidden = false;
+  zoom.fitted = true; setTimeout(() => { applyZoom(); syncSlider(); draw(); }, 280);
 }
-
 function syncSlider() {
   if (!vol) return;
   const n = vol.sizes[view.axis];
@@ -358,7 +612,6 @@ function syncSlider() {
   $("slice").value = view.idx[view.axis];
   $("sl").textContent = `${view.idx[view.axis] + 1}/${n}`;
 }
-
 // ---------------- zoom / di chuyển
 const zoom = { z: 1, x: 0, y: 0, fitted: true };
 function baseSize() {  // cỡ ảnh khi "vừa khung", theo tỉ lệ mm thật
@@ -474,93 +727,23 @@ document.querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => {
 $("dl").onclick = () => { if (current) location.href = `/api/jobs/${current}/rtstruct`; };
 $("reveal").onclick = () => current && api(`/api/jobs/${current}/reveal`, { method: "POST" }).catch(() => {});
 
-// ---------------- danh sách cơ quan theo vùng
-let CAT = null, editSite = "thorax", draft = {};
-const PART_VI = { organs: "nội tạng", vertebrae: "đốt sống", cardiac: "tim mạch", muscles: "cơ – xương", ribs: "xương sườn" };
-let modalMode = "site", draftList = [], caseNames = null;
-const view_ = { intent: "curative" };
-async function loadCatalog() {
-  CAT = await api("/api/catalog");
-  CAT.byName = Object.fromEntries(CAT.items.map((i) => [i.name, i]));
-  CAT.protoById = Object.fromEntries(CAT.protocols.map((p) => [p.id, p]));
-  const sel = $("proto");
-  const groups = [...new Set(CAT.protocols.map((p) => p.group))];
-  for (const g of groups) {
-    const og = document.createElement("optgroup");
-    og.label = g;
-    for (const p of CAT.protocols.filter((x) => x.group === g)) {
-      const o = document.createElement("option"); o.value = p.id; o.textContent = p.name; og.appendChild(o);
-    }
-    sel.appendChild(og);
-  }
-  const og = document.createElement("optgroup"); og.label = "Khác";
-  const o = document.createElement("option"); o.value = "__site"; o.textContent = "Tự chọn theo vùng giải phẫu (nâng cao)";
-  og.appendChild(o); sel.appendChild(og);
-  renderPresetLine(); onProtoChange();
-}
-function onProtoChange() {
-  const v = $("proto").value;
-  $("protoBox").hidden = !v || v === "__site";
-  $("siteBox").hidden = v !== "__site";
-  caseNames = v && v !== "__site" ? [...CAT.protocol_names[v][view_.intent]] : null;
-  renderProto();
-}
-function renderProto() {
-  const v = $("proto").value;
-  if (!CAT || !v || v === "__site") return;
-  const p = CAT.protoById[v];
-  const saved = CAT.protocol_names[v][view_.intent];
-  const edited = JSON.stringify(caseNames) !== JSON.stringify(saved);
-  $("pcount").textContent = `${caseNames.length}${edited ? " (đã chỉnh cho ca này)" : ""}`;
-  $("pchips").innerHTML = caseNames.map((n) => `<span>${esc(n)}</span>`).join("");
-  $("pmanual").innerHTML = p.manual.length ? `<b>Chưa vẽ được, bác sĩ tự vẽ:</b> ${p.manual.map(esc).join(", ")}` : "";
-  $("pmanual").hidden = !p.manual.length;
-  $("pnote").textContent = p.note || "";
-  $("pcost").textContent = `≈ ${costOf(caseNames).units} đơn vị thời gian (1 đơn vị ≈ 1–2 phút trên MacBook, vài giây trên GPU NVIDIA)`;
-}
-$("proto").addEventListener("change", onProtoChange);
-document.querySelectorAll("[data-intent]").forEach((b) => (b.onclick = () => {
-  document.querySelectorAll("[data-intent]").forEach((x) => x.classList.toggle("on", x === b));
-  view_.intent = b.dataset.intent; onProtoChange();
-}));
+
+
+// ---------------- hộp "Mở rộng / chỉnh sửa" và "Chọn cơ quan theo vùng"
+let modalMode = "site", editSite = "thorax", draft = {}, draftList = [];
+const getSel = () => (modalMode === "proto" ? draftList : draft[editSite]);
+const setSel = (list) => { if (modalMode === "proto") draftList = list; else draft[editSite] = list; };
 $("editProto").onclick = () => {
   const v = $("proto").value;
   modalMode = "proto"; draftList = [...caseNames];
-  $("mtitle").textContent = `Danh sách OAR: ${CAT.protoById[v].name} – ${CAT.intents[view_.intent]}`;
-  $("muse").hidden = false; $("msave").textContent = "Lưu làm mặc định của khoa";
-  $("mtabs").hidden = true; $("msearch").value = ""; $("modal").hidden = false; renderModal();
+  $("mtitle").textContent = `OAR: ${CAT.protoById[v].name} · ${CAT.intents[intent].toLowerCase()}`;
+  $("muse").hidden = false; $("msave").textContent = "Lưu làm mặc định của khoa"; $("mtabs").hidden = true;
+  $("msearch").value = ""; $("modal").hidden = false; renderModal();
 };
-function costOf(names) {
-  const parts = new Set(), tasks = new Set();
-  for (const n of names) {
-    const it = CAT.byName[n];
-    if (!it) continue;
-    if (it.task === "total") it.parts.forEach((p) => parts.add(p)); else tasks.add(it.task);
-  }
-  let units = parts.size;
-  tasks.forEach((t) => (units += CAT.tasks[t].cost));
-  return { parts, tasks, units };
-}
-function costText(names) {
-  const c = costOf(names);
-  const extra = [...c.tasks].map((t) => CAT.tasks[t].label);
-  return `Model toàn thân: ${c.parts.size}/5 phần (${[...c.parts].map((p) => PART_VI[p]).join(", ") || "–"})` +
-    (extra.length ? ` · thêm: ${extra.join("; ")}` : "") +
-    ` · ≈ ${c.units} đơn vị thời gian (1 đơn vị ≈ 1–2 phút trên MacBook, vài giây trên GPU NVIDIA)`;
-}
-function renderPresetLine() {
-  if (!CAT) return;
-  const site = $("site").value;
-  if (site === "auto") { $("presetline").textContent = "Dùng danh sách cơ quan của vùng được nhận ra"; return; }
-  const names = CAT.presets[site] || [];
-  $("presetline").textContent = `${names.length} cơ quan · ≈ ${costOf(names).units} đơn vị thời gian`;
-}
-$("site").addEventListener("change", renderPresetLine);
 $("editPreset").onclick = () => {
-  if (!CAT) return;
   editSite = $("site").value === "auto" ? "thorax" : $("site").value;
   draft = JSON.parse(JSON.stringify(CAT.presets));
-  modalMode = "site"; $("mtitle").textContent = "Chọn cơ quan cần khoanh cho từng vùng";
+  modalMode = "site"; $("mtitle").textContent = "Chọn cơ quan cho từng vùng giải phẫu";
   $("muse").hidden = true; $("msave").textContent = "Lưu"; $("mtabs").hidden = false;
   $("msearch").value = ""; $("modal").hidden = false; renderModal();
 };
@@ -573,90 +756,90 @@ function renderModal() {
     b.onclick = () => { editSite = site; renderModal(); };
     $("mtabs").appendChild(b);
   }
-  const getSel = () => (modalMode === "proto" ? draftList : draft[editSite]);
-  const setSel = (list) => { if (modalMode === "proto") draftList = list; else draft[editSite] = list; };
   const sel = new Set(getSel());
   const q = $("msearch").value.trim().toLowerCase();
-  const base = costOf([...sel]);
+  const base = costOf([...sel], false);
+  // nhóm theo giải phẫu trước, sau đó các nhóm còn lại của danh mục
+  const anatNames = new Set(CAT.anatomy.flatMap(([, ns]) => ns));
+  const groups = [...CAT.anatomy.map(([t, ns]) => ({ title: t, items: ns.map((n) => CAT.byName[n]).filter(Boolean) })),
+    ...CAT.groups.map((g) => ({ title: g, items: CAT.items.filter((i) => i.group === g && !anatNames.has(i.name)).sort((a, b) => a.name.localeCompare(b.name)) }))];
   let html = "";
-  for (const g of CAT.groups) {
-    const items = CAT.items.filter((i) => i.group === g && (!q || i.name.toLowerCase().includes(q)));
+  for (const g of groups) {
+    const items = g.items.filter((i) => !q || i.name.toLowerCase().includes(q));
     if (!items.length) continue;
-    html += `<div class="mgroup"><h3><span>${esc(g)}</span><button class="linkbtn" data-group="${esc(g)}">${items.every((i) => sel.has(i.name)) ? "bỏ hết" : "chọn hết"}</button></h3>`;
+    html += `<div class="mgroup"><h3><span>${esc(g.title)}</span><button data-group="${esc(g.title)}">${items.every((i) => sel.has(i.name)) ? "bỏ hết" : "chọn hết"}</button></h3>`;
     for (const i of items) {
       const checked = sel.has(i.name);
-      let addsCost = false;
-      if (!checked) {
-        addsCost = i.task === "total" ? i.parts.some((p) => !base.parts.has(p)) : !base.tasks.has(i.task);
-      }
-      const tag = i.task === "total" ? "" : `<span class="tag" title="${esc(CAT.tasks[i.task].label)}">${esc(i.task.split("_")[0])}</span>`;
-      html += `<label class="mitem"><input type="checkbox" data-name="${esc(i.name)}" ${checked ? "checked" : ""}>` +
-        `<span class="chip" style="background:rgb(${i.color.join(",")})"></span><span>${esc(i.name)}</span>${tag}` +
-        `${addsCost ? '<span class="tag cost">+ thời gian</span>' : ""}</label>`;
+      const adds = !checked && (i.task === "total" ? i.parts.some((p) => !base.parts.has(p)) : !base.tasks.has(i.task));
+      html += `<label class="mitem" title="${esc(CAT.tasks[i.task].label)}"><input type="checkbox" data-name="${esc(i.name)}" ${checked ? "checked" : ""}>` +
+        `<span class="dot" style="background:rgb(${i.color.join(",")})"></span><span>${esc(i.name)}</span>` +
+        `${adds ? '<span class="tag">+ thời gian</span>' : ""}</label>`;
     }
     html += "</div>";
+    g.names = items.map((i) => i.name);
   }
   $("mlist").innerHTML = html || '<div class="muted">Không tìm thấy</div>';
-  $("mcost").textContent = costText([...sel]);
+  const n = getSel().length;
+  $("mcost").innerHTML = `<b>${n} cơ quan</b> · dự kiến khoảng ${minutesFor(getSel())} phút trên máy này` +
+    ` <span class="muted small">· <span class="tag">+ thời gian</span> = chọn sẽ làm thời gian chạy tăng thêm</span>`;
   $("mlist").querySelectorAll("input[data-name]").forEach((cb) => (cb.onchange = () => {
-    const n = cb.dataset.name;
-    setSel(cb.checked ? [...getSel(), n] : getSel().filter((x) => x !== n));
+    const nm = cb.dataset.name;
+    setSel(cb.checked ? [...getSel(), nm] : getSel().filter((x) => x !== nm));
     renderModal();
   }));
   $("mlist").querySelectorAll("button[data-group]").forEach((b) => (b.onclick = () => {
-    const names = CAT.items.filter((i) => i.group === b.dataset.group && (!q || i.name.toLowerCase().includes(q))).map((i) => i.name);
-    const all = names.every((n) => sel.has(n));
-    setSel(all ? getSel().filter((n) => !names.includes(n)) : [...new Set([...getSel(), ...names])]);
+    const g = groups.find((x) => x.title === b.dataset.group);
+    const names = g.names || [];
+    const all = names.every((nm) => sel.has(nm));
+    setSel(all ? getSel().filter((nm) => !names.includes(nm)) : [...new Set([...getSel(), ...names])]);
     renderModal();
   }));
 }
 $("msearch").oninput = () => renderModal();
 $("mreset").onclick = () => {
-  if (modalMode === "proto") draftList = [...CAT.protoById[$("proto").value].defaults[view_.intent]];
+  if (modalMode === "proto") draftList = [...CAT.protoById[$("proto").value].defaults[intent]];
   else draft[editSite] = [...CAT.defaults[editSite]];
   renderModal();
-};
-$("muse").onclick = () => {
-  if (!draftList.length) return alert("Cần chọn ít nhất 1 cơ quan");
-  caseNames = [...draftList]; closeModal(); renderProto();
 };
 const closeModal = () => ($("modal").hidden = true);
 $("mclose").onclick = closeModal; $("mcancel").onclick = closeModal;
 $("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
+$("licModal").addEventListener("click", (e) => { if (e.target.id === "licModal") $("licModal").hidden = true; });
+$("muse").onclick = () => {
+  if (!draftList.length) return alert("Cần chọn ít nhất 1 cơ quan");
+  caseNames = [...draftList]; closeModal(); renderSetup();
+};
 $("msave").onclick = async () => {
-  if (modalMode === "proto") {
-    try {
-      const pid = $("proto").value, d = CAT.protoById[pid].defaults[view_.intent];
+  try {
+    if (modalMode === "proto") {
+      if (!draftList.length) throw new Error("Cần chọn ít nhất 1 cơ quan");
+      const pid = $("proto").value, d = CAT.protoById[pid].defaults[intent];
       const same = JSON.stringify(draftList) === JSON.stringify(d);
       const r = await api("/api/protocol-presets", { method: "POST", body: JSON.stringify(
-        same ? { protocol: pid, intent: view_.intent, reset: true } : { protocol: pid, intent: view_.intent, names: draftList }) });
-      CAT.protocol_names = r.protocol_names; caseNames = [...CAT.protocol_names[pid][view_.intent]];
-      closeModal(); renderProto();
-    } catch (e) { alert("Lỗi: " + e.message); }
-    return;
-  }
-  try {
-    for (const site of Object.keys(CAT.sites)) {
-      if (JSON.stringify(draft[site]) === JSON.stringify(CAT.presets[site])) continue;
-      if (!draft[site].length) throw new Error(`Vùng ${CAT.sites[site]}: cần chọn ít nhất 1 cơ quan`);
-      const same = JSON.stringify(draft[site]) === JSON.stringify(CAT.defaults[site]);
-      const r = await api("/api/presets", { method: "POST", body: JSON.stringify(same ? { site, reset: true } : { site, names: draft[site] }) });
-      CAT.presets = r.presets;
+        same ? { protocol: pid, intent, reset: true } : { protocol: pid, intent, names: draftList }) });
+      CAT.protocol_names = r.protocol_names; caseNames = [...CAT.protocol_names[pid][intent]];
+    } else {
+      for (const site of Object.keys(CAT.sites)) {
+        if (JSON.stringify(draft[site]) === JSON.stringify(CAT.presets[site])) continue;
+        if (!draft[site].length) throw new Error(`Vùng ${CAT.sites[site]}: cần chọn ít nhất 1 cơ quan`);
+        const same = JSON.stringify(draft[site]) === JSON.stringify(CAT.defaults[site]);
+        const r = await api("/api/presets", { method: "POST", body: JSON.stringify(same ? { site, reset: true } : { site, names: draft[site] }) });
+        CAT.presets = r.presets;
+      }
     }
-    closeModal(); renderPresetLine();
+    closeModal(); renderSetup();
   } catch (e) { alert("Lỗi: " + e.message); }
 };
-loadCatalog().catch(() => {});
 
+// ---------------- khởi động
 api("/api/info").then((i) => {
+  INFO = i;
   if (i.accelerator === "cpu") { $("cpuhint").hidden = false; $("fast").checked = true; }
+  renderSetup();
 }).catch(() => {});
-
-refreshJobs().then(() => {
-  const first = document.querySelector("#jobs li:not(.muted)");
-  if (first) first.click();
-});
-setInterval(refreshJobs, 5000);
+loadCatalog().catch((e) => alert("Không tải được danh mục: " + e.message));
+setMode("setup");
+setInterval(refreshJobs, 4000);
 </script>
 </body>
 </html>

@@ -12,17 +12,30 @@ from .structures import Structure
 # Các model (task) dùng được: miễn phí, CT, có ích cho xạ trị. Chi phí: số "đơn vị" thời gian,
 # 1 đơn vị ~ 1 phần của model total (đo trên CPU 4 nhân ~60 s ở chế độ đầy đủ).
 TASKS: dict[str, dict] = {
-    "total": {"label": "Toàn thân (5 phần)", "cost": None},
-    "head_glands_cavities": {"label": "Đầu cổ: tuyến, mắt, khoang", "cost": 1.5},
-    "craniofacial_structures": {"label": "Sọ mặt: xương hàm, xoang, răng", "cost": 2.5},
-    "headneck_bones_vessels": {"label": "Đầu cổ: sụn, xương móng, mạch cảnh", "cost": 1.5},
+    "total": {"label": "Nhóm cơ quan chính", "cost": None},
+    "head_glands_cavities": {"label": "Tuyến nước bọt, mắt, thần kinh thị", "cost": 1.5},
+    "craniofacial_structures": {"label": "Xương hàm, xoang, răng", "cost": 2.5},
+    "headneck_bones_vessels": {"label": "Sụn thanh quản, xương móng, mạch cổ", "cost": 1.5},
     "head_muscles": {"label": "Cơ vùng đầu (nhai, lưỡi)", "cost": 1.5},
-    "headneck_muscles": {"label": "Cơ cổ (khít hầu, ức đòn chũm…), model thử nghiệm", "cost": 3.0},
+    "headneck_muscles": {"label": "Cơ vùng cổ, cơ khít hầu (thử nghiệm)", "cost": 3.0},
     "breasts": {"label": "Tuyến vú", "cost": 1.0},
-    "abdominal_muscles": {"label": "Cơ thành ngực–bụng", "cost": 4.0},
-    "trunk_cavities": {"label": "Khoang ngực, khoang bụng, màng tim, trung thất", "cost": 1.0},
-    "liver_segments": {"label": "Phân thùy gan (Couinaud)", "cost": 1.5},
+    "abdominal_muscles": {"label": "Cơ thành ngực – bụng", "cost": 4.0},
+    "trunk_cavities": {"label": "Khoang ngực, khoang bụng, màng tim", "cost": 1.0},
+    "liver_segments": {"label": "Phân thùy gan", "cost": 1.5},
 }
+
+# Thứ tự giải phẫu để hiển thị danh sách OAR (từ đầu xuống chân); cấu trúc khác xếp sau theo ABC
+ANATOMY_ORDER: list[tuple[str, list[str]]] = [
+    ("Thần kinh – mắt", ["Brain", "SpinalCord", "Eye_L", "Eye_R", "Lens_L", "Lens_R", "OpticNrv_L", "OpticNrv_R"]),
+    ("Đầu cổ", ["Parotid_L", "Parotid_R", "Glnd_Submand_L", "Glnd_Submand_R", "Bone_Mandible", "Tongue",
+                "Musc_Constrict_S", "Musc_Constrict_M", "Musc_Constrict_I", "Larynx_Air", "Cartilage_Thyroid",
+                "Cartilage_Cricoid", "Glnd_Thyroid"]),
+    ("Lồng ngực", ["Trachea", "Esophagus", "Lung_L", "Lung_R", "Lungs", "Heart", "A_Aorta", "V_Venacava_S",
+                   "Breast_L", "Breast_R", "Humerus_L", "Humerus_R", "Sternum", "Ribs", "Ribs_L", "Ribs_R"]),
+    ("Bụng", ["Liver", "Gallbladder", "Stomach", "Duodenum", "Pancreas", "Spleen", "Kidney_L", "Kidney_R",
+              "Kidneys", "Bowel_Small", "Colon"]),
+    ("Tiểu khung", ["Bladder", "Prostate", "Bone_Hips", "Bone_Pelvic", "Sacrum", "Femur_L", "Femur_R"]),
+]
 
 # Phần nào của model "total" chứa nhãn nào (khớp với TotalSegmentator; dùng để ước lượng thời gian)
 TOTAL_PARTS = ["organs", "vertebrae", "cardiac", "muscles", "ribs"]

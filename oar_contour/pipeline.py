@@ -193,6 +193,8 @@ def run_pipeline(
     names: list[str] | None = None,
     manual: list[str] | None = None,
     label: str | None = None,
+    on_plan: Callable[[list[tuple[str, float]]], None] | None = None,
+    on_step: Callable[[int], None] | None = None,
 ) -> Report:
     """names: danh sách cấu trúc cố định (theo phác đồ) -> bỏ qua nhận diện vùng.
     manual: OAR bác sĩ phải tự vẽ (hiện trong báo cáo); label: tên phác đồ."""
@@ -204,7 +206,7 @@ def run_pipeline(
 
     voxel_cc = float(np.prod(image.GetSpacing())) / 1000.0
     # Model nhanh 6 mm (vài giây): nhận diện vùng + biết cắt ảnh ở đâu cho model phụ
-    say("Nhận diện vùng chụp (model nhanh 6 mm)")
+    say("Định vị vùng chụp")
     rough, rough_map = segmenter.run(image, "total", fastest=True)
     if names:
         sites = [label or "Danh sách tuỳ chọn"]
@@ -226,25 +228,47 @@ def run_pipeline(
         structures = structures_for(sites, presets)
     # Chỉ chạy phần model "total" chứa các cơ quan cần, cắt ảnh quanh vùng đó -> nhanh hơn nhiều
     total_labels = total_labels_for(structures)
-    if total_labels:  # danh sách rỗng mà gửi đi thì TotalSegmentator sẽ chạy TOÀN BỘ -> bỏ qua hẳn
-        say("Chạy model: cơ quan chính (task total)")
+    # Kế hoạch các bước (trọng số ~ thời gian) để app hiện % và thời gian còn lại
+    from .catalog import TASKS
+    from .ts_labels import TOTAL_PART_OF
+
+    extra_tasks = [t for t in tasks_for(structures) if t != "total"]
+    n_parts = len({TOTAL_PART_OF[l] for l in total_labels if l in TOTAL_PART_OF})
+    plan = [("Đọc ảnh CT", 0.05), ("Định vị vùng chụp", 0.2)]
+    if total_labels:
+        plan.append((TASKS["total"]["label"], 1.0 if getattr(segmenter, "fast", False) else float(n_parts)))
+    plan += [(TASKS[t]["label"], float(TASKS[t]["cost"])) for t in extra_tasks]
+    plan.append(("Ghi kết quả", 0.1))
+    if on_plan:
+        on_plan(plan)
+    step_i = 2
+    def next_step():
+        nonlocal step_i
+        if on_step:
+            on_step(step_i)
+        step_i += 1
+
+    if total_labels:  # danh sách rỗng mà gửi đi thì sẽ chạy TOÀN BỘ -> bỏ qua hẳn
+        next_step()
+        say("Khoanh nhóm cơ quan chính")
         labelmaps["total"], class_maps["total"] = segmenter.run(image, "total", roi_subset=total_labels)
-    for task in tasks_for(structures):
+    for task in extra_tasks:
         if task in labelmaps:
             continue
+        next_step()
         z0, z1 = 0, image.GetSize()[2]
         if task in TASK_CROP:
             labels, margin = TASK_CROP[task]
             rng = crop_range(rough, rough_map, labels, margin, image)
             if rng is None:  # vùng của model này không có trong ảnh -> bỏ qua, tiết kiệm thời gian
-                say(f"Bỏ qua model {task}: không thấy vùng tương ứng trong ảnh")
+                say(f"Bỏ qua {TASKS[task]['label'].lower()}: không có trong vùng chụp")
                 from .ts_labels import KNOWN_LABELS
 
                 class_maps[task] = {i + 1: l for i, l in enumerate(KNOWN_LABELS.get(task, []))}
                 labelmaps[task] = np.zeros(image.GetSize()[::-1], np.uint8)  # -> các cấu trúc này "không thấy"
                 continue
             z0, z1 = rng
-        say(f"Chạy model bổ sung: {task} ({z1 - z0}/{image.GetSize()[2]} lát)")
+        say(f"Khoanh {TASKS[task]['label'].lower()}")
         sub = image if (z0, z1) == (0, image.GetSize()[2]) else image[:, :, z0:z1]
         arr, class_maps[task] = segmenter.run(sub, task)
         full = np.zeros(image.GetSize()[::-1], arr.dtype)
@@ -255,7 +279,8 @@ def run_pipeline(
     if not masks:
         raise RuntimeError("Không tạo được cấu trúc nào.")
     colors = {s.name: s.color for s in structures}
-    say("Ghi file RTSTRUCT")
+    next_step()
+    say("Ghi kết quả")
     write_rtstruct(dicom_dir, image, masks, colors, out_path)
 
     report = Report(sites=sites, skipped_empty=empty)
