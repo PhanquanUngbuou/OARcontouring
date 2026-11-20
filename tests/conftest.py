@@ -78,21 +78,17 @@ BREAST_MAP = {1: "breast"}
 
 
 def _complete(cmap: dict[int, str], task: str) -> dict[int, str]:
-    """Bổ sung các nhãn khác mà bảng cấu trúc dùng (không có voxel nào trong phantom)."""
-    from oar_contour.structures import SITES
+    """Bổ sung mọi nhãn khác của model (không có voxel nào trong phantom)."""
+    from oar_contour.ts_labels import KNOWN_LABELS
 
     cmap = dict(cmap)
     names = set(cmap.values())
     nxt = 200
-    for items in SITES.values():
-        for s in items:
-            if s.task != task:
-                continue
-            for label in s.labels:
-                if label not in names:
-                    cmap[nxt] = label
-                    names.add(label)
-                    nxt += 1
+    for label in KNOWN_LABELS.get(task, []):
+        if label not in names:
+            cmap[nxt] = label
+            names.add(label)
+            nxt += 1
     return cmap
 
 

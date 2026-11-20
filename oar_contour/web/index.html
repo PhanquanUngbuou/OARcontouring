@@ -74,6 +74,25 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
 .structs .cc { color: var(--muted); font-size: 12px; }
 .note { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-top: 10px; }
 .err { color: var(--err); white-space: pre-wrap; }
+.preset { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 6px; }
+.preset .muted { flex: 1; }
+.linkbtn { border: none; background: none; color: var(--accent); padding: 2px 0; font-weight: 600; cursor: pointer; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+.dialog { background: var(--panel); color: var(--ink); border-radius: 12px; width: min(920px, 100%); max-height: 92vh; display: flex; flex-direction: column; border: 1px solid var(--line); }
+.dhead, .dfoot { display: flex; align-items: center; gap: 8px; padding: 12px 16px; }
+.dhead { border-bottom: 1px solid var(--line); } .dfoot { border-top: 1px solid var(--line); flex-wrap: wrap; }
+.dhead h2 { font-size: 15px; text-transform: none; letter-spacing: 0; color: var(--ink); margin: 0; flex: 1; }
+.dtabs { display: flex; gap: 6px; padding: 10px 16px 0; flex-wrap: wrap; }
+.dtabs button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.dsearch { margin: 10px 16px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--ink); font: inherit; }
+.mlist { overflow: auto; padding: 0 16px 12px; columns: 3 240px; column-gap: 18px; }
+.mgroup { break-inside: avoid; margin-bottom: 12px; }
+.mgroup h3 { font-size: 12px; color: var(--muted); margin: 8px 0 4px; display: flex; justify-content: space-between; }
+.mitem { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 13px; }
+.mitem .chip { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.tag { font-size: 10px; padding: 0 5px; border-radius: 4px; background: var(--bg); color: var(--muted); white-space: nowrap; }
+.tag.cost { background: var(--warn-bg); color: var(--warn-ink); }
+.dcost { font-size: 12px; color: var(--muted); flex: 1 1 100%; }
 @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } section.view { grid-template-columns: 1fr; } .stage { min-height: 70vh; } }
 </style>
 </head>
@@ -103,6 +122,7 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
         <option value="pelvis">Tiểu khung</option>
         <option value="headneck">Đầu cổ</option>
       </select>
+      <div class="preset"><span class="muted" id="presetline">–</span><button class="linkbtn" id="editPreset">Chọn cơ quan…</button></div>
       <label class="f" for="device">Bộ xử lý</label>
       <select id="device">
         <option value="auto">Tự động (chip đồ hoạ nếu có)</option>
@@ -152,6 +172,20 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
     </div>
   </section>
 </main>
+
+<div class="modal" id="modal" hidden>
+  <div class="dialog" role="dialog" aria-label="Chọn cơ quan">
+    <div class="dhead"><h2>Chọn cơ quan cần khoanh cho từng vùng</h2><button id="mclose" aria-label="Đóng">✕</button></div>
+    <div class="dtabs" id="mtabs"></div>
+    <input class="dsearch" id="msearch" placeholder="Tìm cơ quan (ví dụ: gan, Parotid, rib…)">
+    <div class="mlist" id="mlist"></div>
+    <div class="dfoot">
+      <div class="dcost" id="mcost"></div>
+      <span class="muted" style="flex:1">Nhãn <span class="tag cost">+ thời gian</span> = cần chạy thêm 1 phần model. Các cơ quan khác trong cùng phần gần như không tốn thêm.</span>
+      <button id="mreset">Về mặc định</button><button id="mcancel">Huỷ</button><button class="primary" id="msave">Lưu</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -414,6 +448,109 @@ document.querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => {
 }));
 $("dl").onclick = () => { if (current) location.href = `/api/jobs/${current}/rtstruct`; };
 $("reveal").onclick = () => current && api(`/api/jobs/${current}/reveal`, { method: "POST" }).catch(() => {});
+
+// ---------------- danh sách cơ quan theo vùng
+let CAT = null, editSite = "thorax", draft = {};
+const PART_VI = { organs: "nội tạng", vertebrae: "đốt sống", cardiac: "tim mạch", muscles: "cơ – xương", ribs: "xương sườn" };
+async function loadCatalog() {
+  CAT = await api("/api/catalog");
+  CAT.byName = Object.fromEntries(CAT.items.map((i) => [i.name, i]));
+  renderPresetLine();
+}
+function costOf(names) {
+  const parts = new Set(), tasks = new Set();
+  for (const n of names) {
+    const it = CAT.byName[n];
+    if (!it) continue;
+    if (it.task === "total") it.parts.forEach((p) => parts.add(p)); else tasks.add(it.task);
+  }
+  let units = parts.size;
+  tasks.forEach((t) => (units += CAT.tasks[t].cost));
+  return { parts, tasks, units };
+}
+function costText(names) {
+  const c = costOf(names);
+  const extra = [...c.tasks].map((t) => CAT.tasks[t].label);
+  return `Model toàn thân: ${c.parts.size}/5 phần (${[...c.parts].map((p) => PART_VI[p]).join(", ") || "–"})` +
+    (extra.length ? ` · thêm: ${extra.join("; ")}` : "") +
+    ` · ≈ ${c.units} đơn vị thời gian (1 đơn vị ≈ 1–2 phút trên MacBook, vài giây trên GPU NVIDIA)`;
+}
+function renderPresetLine() {
+  if (!CAT) return;
+  const site = $("site").value;
+  if (site === "auto") { $("presetline").textContent = "Dùng danh sách cơ quan của vùng được nhận ra"; return; }
+  const names = CAT.presets[site] || [];
+  $("presetline").textContent = `${names.length} cơ quan · ≈ ${costOf(names).units} đơn vị thời gian`;
+}
+$("site").addEventListener("change", renderPresetLine);
+$("editPreset").onclick = () => {
+  if (!CAT) return;
+  editSite = $("site").value === "auto" ? "thorax" : $("site").value;
+  draft = JSON.parse(JSON.stringify(CAT.presets));
+  $("msearch").value = ""; $("modal").hidden = false; renderModal();
+};
+function renderModal() {
+  $("mtabs").innerHTML = "";
+  for (const [site, label] of Object.entries(CAT.sites)) {
+    const b = document.createElement("button");
+    b.textContent = `${label} (${draft[site].length})`;
+    b.className = site === editSite ? "on" : "";
+    b.onclick = () => { editSite = site; renderModal(); };
+    $("mtabs").appendChild(b);
+  }
+  const sel = new Set(draft[editSite]);
+  const q = $("msearch").value.trim().toLowerCase();
+  const base = costOf([...sel]);
+  let html = "";
+  for (const g of CAT.groups) {
+    const items = CAT.items.filter((i) => i.group === g && (!q || i.name.toLowerCase().includes(q)));
+    if (!items.length) continue;
+    html += `<div class="mgroup"><h3><span>${esc(g)}</span><button class="linkbtn" data-group="${esc(g)}">${items.every((i) => sel.has(i.name)) ? "bỏ hết" : "chọn hết"}</button></h3>`;
+    for (const i of items) {
+      const checked = sel.has(i.name);
+      let addsCost = false;
+      if (!checked) {
+        addsCost = i.task === "total" ? i.parts.some((p) => !base.parts.has(p)) : !base.tasks.has(i.task);
+      }
+      const tag = i.task === "total" ? "" : `<span class="tag" title="${esc(CAT.tasks[i.task].label)}">${esc(i.task.split("_")[0])}</span>`;
+      html += `<label class="mitem"><input type="checkbox" data-name="${esc(i.name)}" ${checked ? "checked" : ""}>` +
+        `<span class="chip" style="background:rgb(${i.color.join(",")})"></span><span>${esc(i.name)}</span>${tag}` +
+        `${addsCost ? '<span class="tag cost">+ thời gian</span>' : ""}</label>`;
+    }
+    html += "</div>";
+  }
+  $("mlist").innerHTML = html || '<div class="muted">Không tìm thấy</div>';
+  $("mcost").textContent = costText([...sel]);
+  $("mlist").querySelectorAll("input[data-name]").forEach((cb) => (cb.onchange = () => {
+    const n = cb.dataset.name;
+    draft[editSite] = cb.checked ? [...draft[editSite], n] : draft[editSite].filter((x) => x !== n);
+    renderModal();
+  }));
+  $("mlist").querySelectorAll("button[data-group]").forEach((b) => (b.onclick = () => {
+    const names = CAT.items.filter((i) => i.group === b.dataset.group && (!q || i.name.toLowerCase().includes(q))).map((i) => i.name);
+    const all = names.every((n) => sel.has(n));
+    draft[editSite] = all ? draft[editSite].filter((n) => !names.includes(n)) : [...new Set([...draft[editSite], ...names])];
+    renderModal();
+  }));
+}
+$("msearch").oninput = () => renderModal();
+$("mreset").onclick = () => { draft[editSite] = [...CAT.defaults[editSite]]; renderModal(); };
+const closeModal = () => ($("modal").hidden = true);
+$("mclose").onclick = closeModal; $("mcancel").onclick = closeModal;
+$("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
+$("msave").onclick = async () => {
+  try {
+    for (const site of Object.keys(CAT.sites)) {
+      if (JSON.stringify(draft[site]) === JSON.stringify(CAT.presets[site])) continue;
+      if (!draft[site].length) throw new Error(`Vùng ${CAT.sites[site]}: cần chọn ít nhất 1 cơ quan`);
+      const same = JSON.stringify(draft[site]) === JSON.stringify(CAT.defaults[site]);
+      const r = await api("/api/presets", { method: "POST", body: JSON.stringify(same ? { site, reset: true } : { site, names: draft[site] }) });
+      CAT.presets = r.presets;
+    }
+    closeModal(); renderPresetLine();
+  } catch (e) { alert("Lỗi: " + e.message); }
+};
+loadCatalog().catch(() => {});
 
 api("/api/info").then((i) => {
   if (i.accelerator === "cpu") { $("cpuhint").hidden = false; $("fast").checked = true; }

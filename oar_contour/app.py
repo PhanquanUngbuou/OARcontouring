@@ -188,6 +188,7 @@ class Job:
     fast: bool = False
     demo: bool = False
     device: str = "auto"  # lựa chọn: auto | cpu
+    presets: dict = field(default_factory=dict)  # danh sách cơ quan theo vùng lúc tạo ca
     device_used: str = ""  # thực tế: gpu | mps | cpu (+ ghi chú nếu chuyển CPU)
     saved_elapsed: int = 0
     status: str = "uploading"  # uploading | queued | running | done | error
@@ -267,10 +268,48 @@ class JobManager:
             except Exception:
                 continue
 
+    # -------- danh sách cơ quan theo vùng (bác sĩ chọn trong app), lưu ở <thư mục kết quả>/settings.json
+    @property
+    def _settings_path(self) -> Path:
+        return self.root / "settings.json"
+
+    def presets(self) -> dict[str, list[str]]:
+        from .structures import DEFAULT_PRESETS
+
+        saved = {}
+        try:
+            saved = json.loads(self._settings_path.read_text(encoding="utf-8")).get("presets", {})
+        except Exception:
+            pass
+        return {site: list(saved.get(site, names)) for site, names in DEFAULT_PRESETS.items()}
+
+    def save_preset(self, site: str, names: list[str] | None):
+        """names=None: về mặc định."""
+        from .catalog import catalog
+        from .structures import DEFAULT_PRESETS
+
+        if site not in DEFAULT_PRESETS:
+            raise ValueError("Vùng không hợp lệ")
+        data = {}
+        try:
+            data = json.loads(self._settings_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        presets = data.setdefault("presets", {})
+        if names is None:
+            presets.pop(site, None)
+        else:
+            cat = catalog()
+            clean = [n for n in dict.fromkeys(names) if n in cat]
+            if not clean:
+                raise ValueError("Cần chọn ít nhất 1 cơ quan")
+            presets[site] = clean
+        self._settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+
     def create(self, site: str, fast: bool, demo: bool, device: str = "auto") -> Job:
         jid = datetime.now().strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
         job = Job(id=jid, dir=self.root / jid, site=site, fast=fast, demo=demo,
-                  device=device if device in ("auto", "cpu") else "auto")
+                  device=device if device in ("auto", "cpu") else "auto", presets=self.presets())
         (job.dir / "upload").mkdir(parents=True)
         self.jobs[jid] = job
         return job
@@ -305,7 +344,8 @@ class JobManager:
                     job.result, job.device_used = self._segment_in_subprocess(job, say)
                 else:
                     job.result, job.device_used = _segment(
-                        job.ct_dir, job.rtstruct, job.site, job.device, job.fast, say, self._get_segmenter)
+                        job.ct_dir, job.rtstruct, job.site, job.device, job.fast, say, self._get_segmenter,
+                        job.presets)
                 say("Chuẩn bị ảnh để xem")
                 self._drop_viewers()
                 job.viewer = ViewerData.load(job.ct_dir, job.rtstruct)
@@ -335,7 +375,8 @@ class JobManager:
         ctx = mp.get_context("spawn")
         q = ctx.Queue()
         proc = ctx.Process(target=_segment_worker, daemon=False,
-                           args=(str(job.ct_dir), str(job.rtstruct), job.site, job.device, job.fast, q))
+                           args=(str(job.ct_dir), str(job.rtstruct), job.site, job.device, job.fast, q,
+                                 job.presets))
         proc.start()
         try:
             while True:
@@ -370,7 +411,7 @@ class JobManager:
         return job.viewer
 
 
-def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter) -> tuple[dict, str]:
+def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter, presets=None) -> tuple[dict, str]:
     from .pipeline import run_pipeline
     from .segment import pick_device
 
@@ -378,7 +419,7 @@ def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter) -> t
     seg = get_segmenter(dev)
     seg.fast = fast
     used = getattr(seg, "device", dev)
-    report = run_pipeline(ct_dir, rtstruct, seg, site=site,
+    report = run_pipeline(ct_dir, rtstruct, seg, site=site, presets=presets or None,
                           progress=lambda m: say(f"{m} ({DEVICE_LABEL.get(used, used)})"))
     if getattr(seg, "fell_back", False) and dev == "mps":
         used = "cpu_fallback"
@@ -392,7 +433,7 @@ def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter) -> t
     return result, used
 
 
-def _segment_worker(ct_dir, rtstruct, site, device_pref, fast, q):
+def _segment_worker(ct_dir, rtstruct, site, device_pref, fast, q, presets=None):
     """Chạy trong tiến trình con (spawn)."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("pydicom").setLevel(logging.ERROR)
@@ -401,7 +442,7 @@ def _segment_worker(ct_dir, rtstruct, site, device_pref, fast, q):
 
         result, used = _segment(Path(ct_dir), Path(rtstruct), site, device_pref, fast,
                                 lambda m: q.put(("msg", m)),
-                                lambda dev: TotalSegmentatorRunner(device=dev))
+                                lambda dev: TotalSegmentatorRunner(device=dev), presets)
         q.put(("done", {"result": result, "device_used": used}))
     except Exception as e:
         logging.error("Lỗi khi khoanh:\n%s", traceback.format_exc())
@@ -459,6 +500,19 @@ def make_handler(manager: JobManager, server_ref: dict):
             parts = [p for p in url.path.split("/") if p]
             if not parts:
                 return self._send(200, (WEB_DIR / "index.html").read_bytes(), "text/html; charset=utf-8")
+            if parts == ["api", "catalog"]:
+                from .catalog import GROUPS, GROUP_OF, TASKS, catalog
+                from .structures import DEFAULT_PRESETS, SITE_NAMES
+                from .ts_labels import TOTAL_PART_OF
+
+                cat = catalog()
+                items = [{"name": n, "task": st.task, "group": GROUP_OF.get(n, "Khác"), "color": st.color,
+                          "parts": sorted({TOTAL_PART_OF[l] for l in st.labels if st.task == "total"
+                                           and l in TOTAL_PART_OF})}
+                         for n, st in cat.items()]
+                return self._json({"items": items, "groups": GROUPS, "sites": SITE_NAMES,
+                                   "tasks": {t: v for t, v in TASKS.items()},
+                                   "presets": manager.presets(), "defaults": DEFAULT_PRESETS})
             if parts == ["api", "info"]:
                 return self._json({"accelerator": guess_accelerator()})
             if parts == ["api", "jobs"]:
@@ -519,6 +573,13 @@ def make_handler(manager: JobManager, server_ref: dict):
                 if job.demo:
                     manager.start(job)
                 return self._json(job.public())
+            if parts == ["api", "presets"]:
+                data = json.loads(self._body() or b"{}")
+                try:
+                    manager.save_preset(str(data.get("site")), None if data.get("reset") else data.get("names", []))
+                except ValueError as e:
+                    return self._json({"error": str(e)}, 400)
+                return self._json({"presets": manager.presets()})
             if parts == ["api", "quit"]:
                 self._json({"ok": True})
                 threading.Thread(target=server_ref["server"].shutdown, daemon=True).start()

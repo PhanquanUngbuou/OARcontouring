@@ -108,3 +108,42 @@ def test_mps_failure_falls_back_to_cpu(monkeypatch, ct_dir):
     runner.run(image, "total")
     assert calls == ["mps", "cpu", "cpu"]
     assert runner.fell_back and runner.device == "cpu"
+
+
+def test_presets_api_and_job_uses_them(ct_dir, tmp_path):
+    manager = JobManager(tmp_path / "results", lambda device: FakeSegmenter(thorax_labels()))
+    ref = {}
+    server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(manager, ref))
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        cat = json.loads(_req(base, "/api/catalog")[2])
+        assert len(cat["items"]) > 200 and "Liver" in cat["presets"]["thorax"]
+        body = json.dumps({"site": "thorax", "names": ["Heart", "Lung_L", "Không_có"]}).encode()
+        presets = json.loads(_req(base, "/api/presets", "POST", body)[2])["presets"]
+        assert presets["thorax"] == ["Heart", "Lung_L"]
+        # mở lại app: vẫn nhớ
+        assert JobManager(tmp_path / "results", None).presets()["thorax"] == ["Heart", "Lung_L"]
+
+        jid = json.loads(_req(base, "/api/jobs", "POST", json.dumps({"site": "thorax"}).encode())[2])["id"]
+        for f in ct_dir.iterdir():
+            _req(base, f"/api/jobs/{jid}/files?name={f.name}", "PUT", f.read_bytes())
+        _req(base, f"/api/jobs/{jid}/start", "POST", b"")
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            job = json.loads(_req(base, f"/api/jobs/{jid}")[2])
+            if job["status"] in ("done", "error"):
+                break
+            time.sleep(0.2)
+        assert job["status"] == "done", job
+        assert {s["name"] for s in job["result"]["structures"]} == {"Heart", "Lung_L"}
+
+        _req(base, "/api/presets", "POST", json.dumps({"site": "thorax", "reset": True}).encode())
+        assert "Liver" in manager.presets()["thorax"]
+        try:
+            _req(base, "/api/presets", "POST", json.dumps({"site": "thorax", "names": []}).encode())
+            raise AssertionError("phải báo lỗi")
+        except urllib.error.HTTPError as e:
+            assert e.code == 400
+    finally:
+        server.shutdown()

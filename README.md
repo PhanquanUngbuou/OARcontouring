@@ -35,8 +35,9 @@ Không cần giao diện vẽ riêng: bác sĩ sửa contour ngay trong Monaco n
 | **Tiểu khung** (`pelvis`) | Bladder, Femur_L/R (cả xương), Bowel_Small, Colon, Bone_Pelvic | **Rectum**, ống hậu môn, Femur_Head, Bowel_Bag | 🟡 Thiếu trực tràng |
 | **Đầu cổ** (`headneck`) | Brain, SpinalCord, Parotid_L/R, Glnd_Submand_L/R, Eye, Lens, OpticNrv, Bone_Mandible, Glnd_Thyroid, Esophagus | **Brainstem, OpticChiasm, Cochlea**, Larynx, cơ khít hầu, khoang miệng | 🟡 Thiếu nhiều OAR quan trọng |
 
-Danh sách đã **rút gọn** còn các OAR thường dùng trong ràng buộc liều. Muốn thêm/bớt thì sửa
-`oar_contour/structures.py`. Model chỉ chạy **phần cần cho các cơ quan này** (model nhanh 6 mm để
+Bảng trên là danh sách **mặc định**. App có **231 cấu trúc** từ các model miễn phí; bác sĩ tự chọn
+cho từng vùng bằng nút **Chọn cơ quan…** (lựa chọn được lưu lại). Danh sách đầy đủ:
+[docs/DANH_SACH_CO_QUAN.md](docs/DANH_SACH_CO_QUAN.md). Model chỉ chạy **phần cần cho các cơ quan này** (model nhanh 6 mm để
 nhận diện vùng, rồi `roi_subset` cắt ảnh quanh vùng cần), nhanh khoảng **gấp đôi** so với chạy toàn bộ
 (đo trên CPU 4 nhân, ảnh mẫu bụng–chậu: 356 s → 177 s).
 

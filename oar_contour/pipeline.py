@@ -64,14 +64,14 @@ def detect_regions(total_labels: np.ndarray, class_map: dict[int, str], voxel_cc
 
 
 def crop_range(rough: np.ndarray, class_map: dict[int, str], labels, margin_mm: float,
-               image: sitk.Image) -> tuple[int, int]:
-    """Đoạn lát [z0, z1) chứa các nhãn (theo kết quả model nhanh) + lề; không thấy thì cả ảnh."""
+               image: sitk.Image) -> tuple[int, int] | None:
+    """Đoạn lát [z0, z1) chứa các nhãn (theo kết quả model nhanh) + lề; không thấy vùng đó thì None."""
     nz = image.GetSize()[2]
     name_to_idx = {v: k for k, v in class_map.items()}
     ids = [name_to_idx[l] for l in labels if l in name_to_idx]
     zs = np.nonzero(np.isin(rough, ids).any(axis=(1, 2)))[0] if ids else np.array([])
     if zs.size == 0:
-        return 0, nz
+        return None
     pad = int(np.ceil(margin_mm / image.GetSpacing()[2]))
     return max(0, int(zs.min()) - pad), min(nz, int(zs.max()) + 1 + pad)
 
@@ -189,6 +189,7 @@ def run_pipeline(
     site: str = "auto",
     min_voxels: int = MIN_VOXELS_DEFAULT,
     progress: Callable[[str], None] | None = None,
+    presets: dict[str, list[str]] | None = None,
 ) -> Report:
     say = progress or (lambda msg: None)
     say("Đọc ảnh CT")
@@ -207,7 +208,7 @@ def run_pipeline(
     else:
         sites = [s.strip() for s in site.split(",")]
 
-    structures = structures_for(sites)
+    structures = structures_for(sites, presets)
     # Chỉ chạy phần model "total" chứa các cơ quan cần, cắt ảnh quanh vùng đó -> nhanh hơn nhiều
     say("Chạy model: cơ quan chính (task total)")
     labelmaps["total"], class_maps["total"] = segmenter.run(
@@ -218,7 +219,15 @@ def run_pipeline(
         z0, z1 = 0, image.GetSize()[2]
         if task in TASK_CROP:
             labels, margin = TASK_CROP[task]
-            z0, z1 = crop_range(rough, rough_map, labels, margin, image)
+            rng = crop_range(rough, rough_map, labels, margin, image)
+            if rng is None:  # vùng của model này không có trong ảnh -> bỏ qua, tiết kiệm thời gian
+                say(f"Bỏ qua model {task}: không thấy vùng tương ứng trong ảnh")
+                from .ts_labels import KNOWN_LABELS
+
+                class_maps[task] = {i + 1: l for i, l in enumerate(KNOWN_LABELS.get(task, []))}
+                labelmaps[task] = np.zeros(image.GetSize()[::-1], np.uint8)  # -> các cấu trúc này "không thấy"
+                continue
+            z0, z1 = rng
         say(f"Chạy model bổ sung: {task} ({z1 - z0}/{image.GetSize()[2]} lát)")
         sub = image if (z0, z1) == (0, image.GetSize()[2]) else image[:, :, z0:z1]
         arr, class_maps[task] = segmenter.run(sub, task)

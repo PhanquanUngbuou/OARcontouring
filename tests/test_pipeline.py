@@ -40,11 +40,11 @@ def test_thorax_auto_roundtrip(ct_dir, tmp_path, monkeypatch):
     assert seg.calls == ["total", "total", "breasts"]
     assert seg.sizes[2] == 24  # phổi chiếm lát 4..19, lề 40 mm -> cả ảnh
     assert seg.kwargs[0]["fastest"] is True  # nhận diện vùng
-    assert "heart" in seg.kwargs[1]["roi_subset"] and "liver" not in seg.kwargs[1]["roi_subset"]
+    assert "heart" in seg.kwargs[1]["roi_subset"] and "urinary_bladder" not in seg.kwargs[1]["roi_subset"]
     for name in ["Lung_L", "Lung_R", "Lungs", "Heart", "SpinalCord", "Breast_L", "Breast_R"]:
         assert name in report.written
     assert "Esophagus" in report.skipped_empty
-    assert "A_Aorta" not in report.written and "Liver" not in report.skipped_empty
+    assert "Liver" in report.skipped_empty  # gan có trong danh sách vùng ngực, phantom không có gan
     assert "Brachial plexus" in report.not_covered
 
     rt = RTStructBuilder.create_from(str(ct_dir), str(out))
