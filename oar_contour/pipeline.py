@@ -190,7 +190,12 @@ def run_pipeline(
     min_voxels: int = MIN_VOXELS_DEFAULT,
     progress: Callable[[str], None] | None = None,
     presets: dict[str, list[str]] | None = None,
+    names: list[str] | None = None,
+    manual: list[str] | None = None,
+    label: str | None = None,
 ) -> Report:
+    """names: danh sách cấu trúc cố định (theo phác đồ) -> bỏ qua nhận diện vùng.
+    manual: OAR bác sĩ phải tự vẽ (hiện trong báo cáo); label: tên phác đồ."""
     say = progress or (lambda msg: None)
     say("Đọc ảnh CT")
     image = load_ct_series(dicom_dir)
@@ -201,18 +206,29 @@ def run_pipeline(
     # Model nhanh 6 mm (vài giây): nhận diện vùng + biết cắt ảnh ở đâu cho model phụ
     say("Nhận diện vùng chụp (model nhanh 6 mm)")
     rough, rough_map = segmenter.run(image, "total", fastest=True)
-    if site == "auto":
+    if names:
+        sites = [label or "Danh sách tuỳ chọn"]
+    elif site == "auto":
         sites = detect_regions(rough, rough_map, voxel_cc)
         if not sites:
             raise RuntimeError("Không nhận diện được vùng chụp; hãy chọn vùng giải phẫu.")
     else:
         sites = [s.strip() for s in site.split(",")]
 
-    structures = structures_for(sites, presets)
+    if names:
+        from .catalog import catalog
+
+        cat = catalog()
+        structures = [cat[n] for n in dict.fromkeys(names) if n in cat]
+        if not structures:
+            raise ValueError("Danh sách cơ quan trống.")
+    else:
+        structures = structures_for(sites, presets)
     # Chỉ chạy phần model "total" chứa các cơ quan cần, cắt ảnh quanh vùng đó -> nhanh hơn nhiều
-    say("Chạy model: cơ quan chính (task total)")
-    labelmaps["total"], class_maps["total"] = segmenter.run(
-        image, "total", roi_subset=total_labels_for(structures))
+    total_labels = total_labels_for(structures)
+    if total_labels:  # danh sách rỗng mà gửi đi thì TotalSegmentator sẽ chạy TOÀN BỘ -> bỏ qua hẳn
+        say("Chạy model: cơ quan chính (task total)")
+        labelmaps["total"], class_maps["total"] = segmenter.run(image, "total", roi_subset=total_labels)
     for task in tasks_for(structures):
         if task in labelmaps:
             continue
@@ -244,6 +260,9 @@ def run_pipeline(
 
     report = Report(sites=sites, skipped_empty=empty)
     report.written = {n: float(m.sum()) * voxel_cc for n, m in masks.items()}
-    report.not_covered = list(dict.fromkeys(x for s in sites for x in NOT_COVERED.get(s, [])))
+    if names:
+        report.not_covered = list(manual or [])
+    else:
+        report.not_covered = list(dict.fromkeys(x for s in sites for x in NOT_COVERED.get(s, [])))
     report.notes = {s.name: s.note for s in structures if s.note and s.name in masks}
     return report

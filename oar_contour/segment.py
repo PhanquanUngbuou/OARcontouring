@@ -116,7 +116,9 @@ class TotalSegmentatorRunner:
         if task == "total":
             if fastest:
                 extra["fastest"] = True
-            elif roi_subset:
+            elif roi_subset is not None:
+                if not roi_subset:
+                    raise ValueError("roi_subset rỗng: không có cơ quan nào cần model total")
                 extra["roi_subset"] = list(roi_subset)
         with tempfile.TemporaryDirectory(prefix="oar_") as tmp:
             ct_path = Path(tmp) / "ct.nii.gz"

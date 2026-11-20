@@ -1,6 +1,6 @@
 # Danh sách cơ quan QuanContour khoanh được
 
-Tổng cộng **231 cấu trúc** từ các model **miễn phí** của TotalSegmentator (CT). Trong app: **Chọn cơ quan…** để tích/bỏ cho từng vùng; lựa chọn được lưu lại.
+Tổng cộng **232 cấu trúc** từ các model **miễn phí** của TotalSegmentator (CT). Trong app: **Chọn cơ quan…** để tích/bỏ cho từng vùng; lựa chọn được lưu lại.
 
 ## Thời gian chạy
 
@@ -154,13 +154,14 @@ Cột **Mặc định** = vùng mà cơ quan được tích sẵn.
 | Breast_L | Tuyến vú | Ngực / vú |
 | Breast_R | Tuyến vú | Ngực / vú |
 
-### Xương (68)
+### Xương (69)
 
 | Tên | Model | Mặc định |
 |---|---|---|
 | Femur_L | toàn thân – cơ – xương | Tiểu khung |
 | Femur_R | toàn thân – cơ – xương | Tiểu khung |
 | Bone_Pelvic | toàn thân – cơ – xương, đốt sống | Tiểu khung |
+| Bone_Hips | toàn thân – cơ – xương |  |
 | Bone_Mandible | Sọ mặt: xương hàm, xoang, răng | Đầu cổ |
 | Ribs_L | toàn thân – xương sườn |  |
 | Ribs_R | toàn thân – xương sườn |  |

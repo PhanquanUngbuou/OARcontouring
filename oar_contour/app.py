@@ -189,6 +189,9 @@ class Job:
     demo: bool = False
     device: str = "auto"  # lựa chọn: auto | cpu
     presets: dict = field(default_factory=dict)  # danh sách cơ quan theo vùng lúc tạo ca
+    protocol: str = ""  # id phác đồ (vị trí u); rỗng = chọn theo vùng giải phẫu
+    intent: str = ""  # curative | palliative
+    names: list = field(default_factory=list)  # danh sách OAR cố định của ca (theo phác đồ)
     device_used: str = ""  # thực tế: gpu | mps | cpu (+ ghi chú nếu chuyển CPU)
     saved_elapsed: int = 0
     status: str = "uploading"  # uploading | queued | running | done | error
@@ -208,11 +211,29 @@ class Job:
     def rtstruct(self) -> Path:
         return self.dir / "RS_AI_OAR.dcm"
 
+    def run_spec(self) -> dict | None:
+        """Danh sách OAR cố định + OAR bác sĩ tự vẽ (khi chọn theo phác đồ)."""
+        if not self.protocol:
+            return None
+        from .protocols import PROTOCOL_BY_ID
+
+        p = PROTOCOL_BY_ID.get(self.protocol)
+        return {"names": list(self.names), "manual": list(p.manual) if p else [], "label": self.label()}
+
+    def label(self) -> str:
+        if not self.protocol:
+            return ""
+        from .protocols import INTENTS, PROTOCOL_BY_ID
+
+        p = PROTOCOL_BY_ID.get(self.protocol)
+        return f"{p.name if p else self.protocol} · {INTENTS.get(self.intent, '').lower()}"
+
     def public(self) -> dict:
         elapsed = (self.finished or time.time()) - self.started if self.started else self.saved_elapsed
         return {"id": self.id, "status": self.status, "message": self.message, "site": self.site,
                 "fast": self.fast, "demo": self.demo, "elapsed": round(elapsed),
-                "device": self.device, "device_used": self.device_used, "n_files": self.n_files,
+                "device": self.device, "device_used": self.device_used,
+                "protocol": self.protocol, "intent": self.intent, "label": self.label(), "n_files": self.n_files,
                 "result": self.result, "error": self.error, "folder": str(self.dir)}
 
 
@@ -262,7 +283,8 @@ class JobManager:
                           fast=data.get("fast", False), demo=data.get("demo", False), status="done",
                           message="Hoàn tất", result=data.get("result", {}), n_files=data.get("n_files", 0),
                           device=data.get("device", "auto"), device_used=data.get("device_used", ""),
-                          saved_elapsed=int(data.get("elapsed", 0)))
+                          saved_elapsed=int(data.get("elapsed", 0)),
+                          protocol=data.get("protocol", ""), intent=data.get("intent", ""))
                 if job.rtstruct.exists() and job.ct_dir.exists():
                     self.jobs[job.id] = job
             except Exception:
@@ -306,10 +328,55 @@ class JobManager:
             presets[site] = clean
         self._settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
-    def create(self, site: str, fast: bool, demo: bool, device: str = "auto") -> Job:
+    def _settings(self) -> dict:
+        try:
+            return json.loads(self._settings_path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def protocol_names(self) -> dict[str, dict[str, list[str]]]:
+        """Danh sách OAR theo phác đồ: mặc định đã được khoa chỉnh (nếu có), không thì mặc định của app."""
+        from .protocols import PROTOCOLS, default_names, expand
+
+        saved = self._settings().get("protocols", {})
+        out = {}
+        for p in PROTOCOLS:
+            out[p.id] = {}
+            for intent in ("curative", "palliative"):
+                names = saved.get(p.id, {}).get(intent)
+                out[p.id][intent] = expand(names) if names else default_names(p.id, intent)
+        return out
+
+    def save_protocol(self, pid: str, intent: str, names: list[str] | None):
+        from .protocols import PROTOCOL_BY_ID, expand
+
+        if pid not in PROTOCOL_BY_ID or intent not in ("curative", "palliative"):
+            raise ValueError("Phác đồ không hợp lệ")
+        data = self._settings()
+        entry = data.setdefault("protocols", {}).setdefault(pid, {})
+        if names is None:
+            entry.pop(intent, None)
+        else:
+            clean = expand(names)
+            if not clean:
+                raise ValueError("Cần chọn ít nhất 1 cơ quan")
+            entry[intent] = clean
+        self._settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    def create(self, site: str, fast: bool, demo: bool, device: str = "auto", protocol: str = "",
+               intent: str = "", names: list[str] | None = None) -> Job:
         jid = datetime.now().strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
         job = Job(id=jid, dir=self.root / jid, site=site, fast=fast, demo=demo,
                   device=device if device in ("auto", "cpu") else "auto", presets=self.presets())
+        if protocol:
+            from .protocols import PROTOCOL_BY_ID, expand
+
+            if protocol not in PROTOCOL_BY_ID or intent not in ("curative", "palliative"):
+                raise ValueError("Phác đồ không hợp lệ")
+            job.protocol, job.intent = protocol, intent
+            job.names = expand(names) if names else self.protocol_names()[protocol][intent]
+            if not job.names:
+                raise ValueError("Danh sách cơ quan trống")
         (job.dir / "upload").mkdir(parents=True)
         self.jobs[jid] = job
         return job
@@ -345,7 +412,7 @@ class JobManager:
                 else:
                     job.result, job.device_used = _segment(
                         job.ct_dir, job.rtstruct, job.site, job.device, job.fast, say, self._get_segmenter,
-                        job.presets)
+                        job.presets, job.run_spec())
                 say("Chuẩn bị ảnh để xem")
                 self._drop_viewers()
                 job.viewer = ViewerData.load(job.ct_dir, job.rtstruct)
@@ -353,7 +420,8 @@ class JobManager:
                 (job.dir / "job.json").write_text(json.dumps(
                     {"id": job.id, "site": job.site, "fast": job.fast, "demo": job.demo,
                      "n_files": job.n_files, "result": job.result, "device": job.device,
-                     "device_used": job.device_used, "elapsed": round(time.time() - job.started)},
+                     "device_used": job.device_used, "elapsed": round(time.time() - job.started),
+                     "protocol": job.protocol, "intent": job.intent},
                     ensure_ascii=False), encoding="utf-8")
             except Exception as e:
                 log.error("Ca %s lỗi:\n%s", job.id, traceback.format_exc())
@@ -376,7 +444,7 @@ class JobManager:
         q = ctx.Queue()
         proc = ctx.Process(target=_segment_worker, daemon=False,
                            args=(str(job.ct_dir), str(job.rtstruct), job.site, job.device, job.fast, q,
-                                 job.presets))
+                                 job.presets, job.run_spec()))
         proc.start()
         try:
             while True:
@@ -411,7 +479,8 @@ class JobManager:
         return job.viewer
 
 
-def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter, presets=None) -> tuple[dict, str]:
+def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter, presets=None,
+             spec=None) -> tuple[dict, str]:
     from .pipeline import run_pipeline
     from .segment import pick_device
 
@@ -419,7 +488,9 @@ def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter, pres
     seg = get_segmenter(dev)
     seg.fast = fast
     used = getattr(seg, "device", dev)
+    spec = spec or {}
     report = run_pipeline(ct_dir, rtstruct, seg, site=site, presets=presets or None,
+                          names=spec.get("names"), manual=spec.get("manual"), label=spec.get("label"),
                           progress=lambda m: say(f"{m} ({DEVICE_LABEL.get(used, used)})"))
     if getattr(seg, "fell_back", False) and dev == "mps":
         used = "cpu_fallback"
@@ -433,7 +504,7 @@ def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter, pres
     return result, used
 
 
-def _segment_worker(ct_dir, rtstruct, site, device_pref, fast, q, presets=None):
+def _segment_worker(ct_dir, rtstruct, site, device_pref, fast, q, presets=None, spec=None):
     """Chạy trong tiến trình con (spawn)."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("pydicom").setLevel(logging.ERROR)
@@ -442,7 +513,7 @@ def _segment_worker(ct_dir, rtstruct, site, device_pref, fast, q, presets=None):
 
         result, used = _segment(Path(ct_dir), Path(rtstruct), site, device_pref, fast,
                                 lambda m: q.put(("msg", m)),
-                                lambda dev: TotalSegmentatorRunner(device=dev), presets)
+                                lambda dev: TotalSegmentatorRunner(device=dev), presets, spec)
         q.put(("done", {"result": result, "device_used": used}))
     except Exception as e:
         logging.error("Lỗi khi khoanh:\n%s", traceback.format_exc())
@@ -510,9 +581,17 @@ def make_handler(manager: JobManager, server_ref: dict):
                           "parts": sorted({TOTAL_PART_OF[l] for l in st.labels if st.task == "total"
                                            and l in TOTAL_PART_OF})}
                          for n, st in cat.items()]
+                from .protocols import INTENTS, PROTOCOLS, default_names
+
+                protocols = [{"id": p.id, "group": p.group, "name": p.name, "manual": list(p.manual),
+                              "note": p.note, "region": p.region,
+                              "defaults": {i: default_names(p.id, i) for i in ("curative", "palliative")}}
+                             for p in PROTOCOLS]
                 return self._json({"items": items, "groups": GROUPS, "sites": SITE_NAMES,
                                    "tasks": {t: v for t, v in TASKS.items()},
-                                   "presets": manager.presets(), "defaults": DEFAULT_PRESETS})
+                                   "presets": manager.presets(), "defaults": DEFAULT_PRESETS,
+                                   "protocols": protocols, "protocol_names": manager.protocol_names(),
+                                   "intents": INTENTS})
             if parts == ["api", "info"]:
                 return self._json({"accelerator": guess_accelerator()})
             if parts == ["api", "jobs"]:
@@ -568,11 +647,23 @@ def make_handler(manager: JobManager, server_ref: dict):
                         structures_for(site.split(","))
                     except ValueError as e:
                         return self._json({"error": str(e)}, 400)
-                job = manager.create(site, bool(data.get("fast")), bool(data.get("demo")),
-                                     str(data.get("device", "auto")))
+                try:
+                    job = manager.create(site, bool(data.get("fast")), bool(data.get("demo")),
+                                         str(data.get("device", "auto")), str(data.get("protocol") or ""),
+                                         str(data.get("intent") or ""), data.get("names"))
+                except ValueError as e:
+                    return self._json({"error": str(e)}, 400)
                 if job.demo:
                     manager.start(job)
                 return self._json(job.public())
+            if parts == ["api", "protocol-presets"]:
+                data = json.loads(self._body() or b"{}")
+                try:
+                    manager.save_protocol(str(data.get("protocol")), str(data.get("intent")),
+                                          None if data.get("reset") else data.get("names", []))
+                except ValueError as e:
+                    return self._json({"error": str(e)}, 400)
+                return self._json({"protocol_names": manager.protocol_names()})
             if parts == ["api", "presets"]:
                 data = json.loads(self._body() or b"{}")
                 try:

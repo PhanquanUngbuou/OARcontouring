@@ -27,7 +27,7 @@ class Structure:
 
 
 # Cơ quan có thể gồm nhiều khối rời trên ảnh -> KHÔNG lọc khối lớn nhất
-_MULTI_PART = {"Lungs", "Bowel_Small", "Colon", "Bone_Pelvic", "SpinalCord", "Esophagus", "Duodenum",
+_MULTI_PART = {"Lungs", "Bowel_Small", "Colon", "Bone_Pelvic", "Bone_Hips", "SpinalCord", "Esophagus", "Duodenum",
                "Breast_L", "Breast_R", "Glnd_Thyroid", "Trachea", "OpticNrv_L", "OpticNrv_R"}
 
 
@@ -73,7 +73,10 @@ CURATED = [
        note="Toàn bộ xương đùi trong trường chụp. Khoa dùng Femur_Head thì cắt bớt theo quy ước."),
     _s("Femur_R", "total", "femur_right", (0, 150, 0),
        note="Toàn bộ xương đùi trong trường chụp. Khoa dùng Femur_Head thì cắt bớt theo quy ước."),
-    _s("Bone_Pelvic", "total", ["hip_left", "hip_right", "sacrum"], (200, 200, 160)),
+    _s("Bone_Pelvic", "total", ["hip_left", "hip_right", "sacrum"], (200, 200, 160),
+       note="Gồm xương cùng: cần thêm phần model đốt sống."),
+    _s("Bone_Hips", "total", ["hip_left", "hip_right"], (215, 205, 150),
+       note="Xương chậu 2 bên (cánh chậu, ngồi, mu), không gồm xương cùng: dùng cho xạ tránh tủy xương."),
     _s("Prostate", "total", "prostate", (0, 255, 200)),
     _s("Brain", "total", "brain", (255, 200, 160)),
     _s("Parotid_L", "head_glands_cavities", "parotid_gland_left", (0, 200, 255)),

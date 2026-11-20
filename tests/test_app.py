@@ -147,3 +147,43 @@ def test_presets_api_and_job_uses_them(ct_dir, tmp_path):
             assert e.code == 400
     finally:
         server.shutdown()
+
+
+def test_protocol_job_api(ct_dir, tmp_path):
+    manager = JobManager(tmp_path / "results", lambda device: FakeSegmenter(thorax_labels()))
+    ref = {}
+    server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(manager, ref))
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        cat = json.loads(_req(base, "/api/catalog")[2])
+        assert any(p["id"] == "hn_nasopharynx" for p in cat["protocols"])
+        assert "Bone_Mandible" in cat["protocol_names"]["hn_nasopharynx"]["curative"]
+        # khoa chỉnh danh sách vú trái triệt căn, lưu làm mặc định
+        body = json.dumps({"protocol": "breast_left", "intent": "curative", "names": ["Heart", "Lung_L"]}).encode()
+        names = json.loads(_req(base, "/api/protocol-presets", "POST", body)[2])["protocol_names"]
+        assert names["breast_left"]["curative"] == ["Heart", "Lung_L"]
+        # ca mới theo phác đồ, thêm Breast_R chỉ cho ca này
+        spec = {"protocol": "breast_left", "intent": "curative", "names": ["Heart", "Lung_L", "Breast_R"]}
+        jid = json.loads(_req(base, "/api/jobs", "POST", json.dumps(spec).encode())[2])["id"]
+        for f in ct_dir.iterdir():
+            _req(base, f"/api/jobs/{jid}/files?name={f.name}", "PUT", f.read_bytes())
+        _req(base, f"/api/jobs/{jid}/start", "POST", b"")
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            job = json.loads(_req(base, f"/api/jobs/{jid}")[2])
+            if job["status"] in ("done", "error"):
+                break
+            time.sleep(0.2)
+        assert job["status"] == "done", job
+        assert {s["name"] for s in job["result"]["structures"]} == {"Heart", "Lung_L", "Breast_R"}
+        assert "LAD" in " ".join(job["result"]["not_covered"])
+        assert job["label"] == "Vú trái · triệt căn"
+        assert manager.protocol_names()["breast_left"]["curative"] == ["Heart", "Lung_L"]  # không bị ghi đè
+        try:
+            _req(base, "/api/jobs", "POST", json.dumps({"protocol": "khong_co", "intent": "curative"}).encode())
+            raise AssertionError("phải báo lỗi")
+        except urllib.error.HTTPError as e:
+            assert e.code == 400
+    finally:
+        server.shutdown()

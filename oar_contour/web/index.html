@@ -74,6 +74,12 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
 .structs .cc { color: var(--muted); font-size: 12px; }
 .note { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-top: 10px; }
 .err { color: var(--err); white-space: pre-wrap; }
+.seg { display: flex; gap: 0; }
+.seg button { flex: 1; border-radius: 0; }
+.seg button:first-child { border-radius: 7px 0 0 7px; } .seg button:last-child { border-radius: 0 7px 7px 0; border-left: none; }
+.seg button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chips span { font-size: 11px; padding: 1px 6px; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); }
 .preset { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 6px; }
 .preset .muted { flex: 1; }
 .linkbtn { border: none; background: none; color: var(--accent); padding: 2px 0; font-weight: 600; cursor: pointer; }
@@ -114,15 +120,28 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
       </div>
       <input type="file" id="files" webkitdirectory multiple hidden>
       <div id="picked" class="muted" style="margin-top:6px"></div>
-      <label class="f" for="site">Vùng giải phẫu</label>
-      <select id="site">
-        <option value="auto">Tự nhận diện</option>
-        <option value="thorax">Ngực / vú</option>
-        <option value="abdomen">Bụng</option>
-        <option value="pelvis">Tiểu khung</option>
-        <option value="headneck">Đầu cổ</option>
-      </select>
-      <div class="preset"><span class="muted" id="presetline">–</span><button class="linkbtn" id="editPreset">Chọn cơ quan…</button></div>
+      <label class="f">Mục đích xạ trị</label>
+      <div class="seg" id="intent"><button data-intent="curative" class="on">Triệt căn</button><button data-intent="palliative">Triệu chứng</button></div>
+      <label class="f" for="proto">Vị trí xạ trị</label>
+      <select id="proto"><option value="">— Chọn vị trí u —</option></select>
+      <div id="protoBox" hidden>
+        <div class="preset"><span><b id="pcount"></b> OAR sẽ khoanh</span><button class="linkbtn" id="editProto">Mở rộng / chỉnh sửa…</button></div>
+        <div class="chips" id="pchips"></div>
+        <div class="note" id="pmanual"></div>
+        <div class="muted" id="pnote" style="margin-top:6px"></div>
+        <div class="muted" id="pcost" style="margin-top:4px"></div>
+      </div>
+      <div id="siteBox" hidden>
+        <label class="f" for="site">Vùng giải phẫu</label>
+        <select id="site">
+          <option value="auto">Tự nhận diện</option>
+          <option value="thorax">Ngực / vú</option>
+          <option value="abdomen">Bụng</option>
+          <option value="pelvis">Tiểu khung</option>
+          <option value="headneck">Đầu cổ</option>
+        </select>
+        <div class="preset"><span class="muted" id="presetline">–</span><button class="linkbtn" id="editPreset">Chọn cơ quan…</button></div>
+      </div>
       <label class="f" for="device">Bộ xử lý</label>
       <select id="device">
         <option value="auto">Tự động (chip đồ hoạ nếu có)</option>
@@ -175,14 +194,14 @@ section.view { display: grid; grid-template-columns: 1fr 260px; gap: 14px; min-h
 
 <div class="modal" id="modal" hidden>
   <div class="dialog" role="dialog" aria-label="Chọn cơ quan">
-    <div class="dhead"><h2>Chọn cơ quan cần khoanh cho từng vùng</h2><button id="mclose" aria-label="Đóng">✕</button></div>
+    <div class="dhead"><h2 id="mtitle">Chọn cơ quan cần khoanh cho từng vùng</h2><button id="mclose" aria-label="Đóng">✕</button></div>
     <div class="dtabs" id="mtabs"></div>
     <input class="dsearch" id="msearch" placeholder="Tìm cơ quan (ví dụ: gan, Parotid, rib…)">
     <div class="mlist" id="mlist"></div>
     <div class="dfoot">
       <div class="dcost" id="mcost"></div>
       <span class="muted" style="flex:1">Nhãn <span class="tag cost">+ thời gian</span> = cần chạy thêm 1 phần model. Các cơ quan khác trong cùng phần gần như không tốn thêm.</span>
-      <button id="mreset">Về mặc định</button><button id="mcancel">Huỷ</button><button class="primary" id="msave">Lưu</button>
+      <button id="mreset">Về mặc định</button><button id="mcancel">Huỷ</button><button id="muse" hidden>Dùng cho ca này</button><button class="primary" id="msave">Lưu</button>
     </div>
   </div>
 </div>
@@ -212,10 +231,16 @@ $("files").onchange = (e) => {
   $("run").disabled = !picked.length;
 };
 
+function caseSpec() {
+  const v = $("proto").value;
+  if (v && v !== "__site") return { protocol: v, intent: view_.intent, names: caseNames };
+  return { site: $("site").value };
+}
 $("run").onclick = async () => {
+  if (!$("proto").value) { alert("Chọn vị trí xạ trị (hoặc 'Tự chọn theo vùng giải phẫu')."); return; }
   $("run").disabled = true; $("demo").disabled = true;
   try {
-    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ site: $("site").value, fast: $("fast").checked, device: $("device").value }) });
+    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ ...caseSpec(), fast: $("fast").checked, device: $("device").value }) });
     $("up").hidden = false;
     let done = 0;
     const queue = [...picked];
@@ -242,7 +267,7 @@ $("run").onclick = async () => {
 
 $("demo").onclick = async () => {
   try {
-    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ site: "auto", fast: $("fast").checked, demo: true, device: $("device").value }) });
+    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ ...($("proto").value ? caseSpec() : { site: "auto" }), fast: $("fast").checked, demo: true, device: $("device").value }) });
     select(job.id);
   } catch (e) { alert("Lỗi: " + e.message); }
 };
@@ -267,7 +292,7 @@ async function refreshJobs() {
     const when = j.id.slice(0, 13).replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, "$3/$2 $4:$5");
     const sites = (j.result.sites || [j.site]).map((s) => labelSite[s] || s).join(", ");
     const took = j.status === "done" && j.elapsed ? ` · ${fmtTime(j.elapsed)}` : "";
-    li.innerHTML = `<span>${esc(when)} · ${esc(j.demo ? "Ảnh mẫu" : sites)}<span class="muted">${esc(took)}${j.device_used ? " · " + esc(labelDevice[j.device_used] || j.device_used) : ""}</span></span><span class="st-${j.status}">${labelStatus[j.status] || j.status}</span>`;
+    li.innerHTML = `<span>${esc(when)} · ${esc((j.demo ? "Ảnh mẫu" : "") + (j.label ? (j.demo ? " · " : "") + j.label : (j.demo ? "" : sites)))}<span class="muted">${esc(took)}${j.device_used ? " · " + esc(labelDevice[j.device_used] || j.device_used) : ""}</span></span><span class="st-${j.status}">${labelStatus[j.status] || j.status}</span>`;
     li.onclick = () => select(j.id);
     $("jobs").appendChild(li);
   }
@@ -301,7 +326,7 @@ async function select(id) {
 async function showResult(j) {
   vol = await api(`/api/jobs/${j.id}/volume`);
   const r = j.result;
-  $("status").innerHTML = `${r.structures.length} cấu trúc · ${j.n_files} lát CT · ${esc((r.sites || []).map((s) => labelSite[s] || s).join(", "))}${j.elapsed ? " · " + fmtTime(j.elapsed) : ""}${j.device_used ? " · " + (labelDevice[j.device_used] || j.device_used) : ""}${j.fast ? " · chế độ nhanh" : ""}`;
+  $("status").innerHTML = `${r.structures.length} cấu trúc · ${j.n_files} lát CT · ${esc(j.label || (r.sites || []).map((s) => labelSite[s] || s).join(", "))}${j.elapsed ? " · " + fmtTime(j.elapsed) : ""}${j.device_used ? " · " + (labelDevice[j.device_used] || j.device_used) : ""}${j.fast ? " · chế độ nhanh" : ""}`;
   $("actions").hidden = false;
   const list = $("list");
   list.innerHTML = "";
@@ -452,11 +477,59 @@ $("reveal").onclick = () => current && api(`/api/jobs/${current}/reveal`, { meth
 // ---------------- danh sách cơ quan theo vùng
 let CAT = null, editSite = "thorax", draft = {};
 const PART_VI = { organs: "nội tạng", vertebrae: "đốt sống", cardiac: "tim mạch", muscles: "cơ – xương", ribs: "xương sườn" };
+let modalMode = "site", draftList = [], caseNames = null;
+const view_ = { intent: "curative" };
 async function loadCatalog() {
   CAT = await api("/api/catalog");
   CAT.byName = Object.fromEntries(CAT.items.map((i) => [i.name, i]));
-  renderPresetLine();
+  CAT.protoById = Object.fromEntries(CAT.protocols.map((p) => [p.id, p]));
+  const sel = $("proto");
+  const groups = [...new Set(CAT.protocols.map((p) => p.group))];
+  for (const g of groups) {
+    const og = document.createElement("optgroup");
+    og.label = g;
+    for (const p of CAT.protocols.filter((x) => x.group === g)) {
+      const o = document.createElement("option"); o.value = p.id; o.textContent = p.name; og.appendChild(o);
+    }
+    sel.appendChild(og);
+  }
+  const og = document.createElement("optgroup"); og.label = "Khác";
+  const o = document.createElement("option"); o.value = "__site"; o.textContent = "Tự chọn theo vùng giải phẫu (nâng cao)";
+  og.appendChild(o); sel.appendChild(og);
+  renderPresetLine(); onProtoChange();
 }
+function onProtoChange() {
+  const v = $("proto").value;
+  $("protoBox").hidden = !v || v === "__site";
+  $("siteBox").hidden = v !== "__site";
+  caseNames = v && v !== "__site" ? [...CAT.protocol_names[v][view_.intent]] : null;
+  renderProto();
+}
+function renderProto() {
+  const v = $("proto").value;
+  if (!CAT || !v || v === "__site") return;
+  const p = CAT.protoById[v];
+  const saved = CAT.protocol_names[v][view_.intent];
+  const edited = JSON.stringify(caseNames) !== JSON.stringify(saved);
+  $("pcount").textContent = `${caseNames.length}${edited ? " (đã chỉnh cho ca này)" : ""}`;
+  $("pchips").innerHTML = caseNames.map((n) => `<span>${esc(n)}</span>`).join("");
+  $("pmanual").innerHTML = p.manual.length ? `<b>Chưa vẽ được, bác sĩ tự vẽ:</b> ${p.manual.map(esc).join(", ")}` : "";
+  $("pmanual").hidden = !p.manual.length;
+  $("pnote").textContent = p.note || "";
+  $("pcost").textContent = `≈ ${costOf(caseNames).units} đơn vị thời gian (1 đơn vị ≈ 1–2 phút trên MacBook, vài giây trên GPU NVIDIA)`;
+}
+$("proto").addEventListener("change", onProtoChange);
+document.querySelectorAll("[data-intent]").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll("[data-intent]").forEach((x) => x.classList.toggle("on", x === b));
+  view_.intent = b.dataset.intent; onProtoChange();
+}));
+$("editProto").onclick = () => {
+  const v = $("proto").value;
+  modalMode = "proto"; draftList = [...caseNames];
+  $("mtitle").textContent = `Danh sách OAR: ${CAT.protoById[v].name} – ${CAT.intents[view_.intent]}`;
+  $("muse").hidden = false; $("msave").textContent = "Lưu làm mặc định của khoa";
+  $("mtabs").hidden = true; $("msearch").value = ""; $("modal").hidden = false; renderModal();
+};
 function costOf(names) {
   const parts = new Set(), tasks = new Set();
   for (const n of names) {
@@ -487,18 +560,22 @@ $("editPreset").onclick = () => {
   if (!CAT) return;
   editSite = $("site").value === "auto" ? "thorax" : $("site").value;
   draft = JSON.parse(JSON.stringify(CAT.presets));
+  modalMode = "site"; $("mtitle").textContent = "Chọn cơ quan cần khoanh cho từng vùng";
+  $("muse").hidden = true; $("msave").textContent = "Lưu"; $("mtabs").hidden = false;
   $("msearch").value = ""; $("modal").hidden = false; renderModal();
 };
 function renderModal() {
   $("mtabs").innerHTML = "";
-  for (const [site, label] of Object.entries(CAT.sites)) {
+  if (modalMode === "site") for (const [site, label] of Object.entries(CAT.sites)) {
     const b = document.createElement("button");
     b.textContent = `${label} (${draft[site].length})`;
     b.className = site === editSite ? "on" : "";
     b.onclick = () => { editSite = site; renderModal(); };
     $("mtabs").appendChild(b);
   }
-  const sel = new Set(draft[editSite]);
+  const getSel = () => (modalMode === "proto" ? draftList : draft[editSite]);
+  const setSel = (list) => { if (modalMode === "proto") draftList = list; else draft[editSite] = list; };
+  const sel = new Set(getSel());
   const q = $("msearch").value.trim().toLowerCase();
   const base = costOf([...sel]);
   let html = "";
@@ -523,22 +600,41 @@ function renderModal() {
   $("mcost").textContent = costText([...sel]);
   $("mlist").querySelectorAll("input[data-name]").forEach((cb) => (cb.onchange = () => {
     const n = cb.dataset.name;
-    draft[editSite] = cb.checked ? [...draft[editSite], n] : draft[editSite].filter((x) => x !== n);
+    setSel(cb.checked ? [...getSel(), n] : getSel().filter((x) => x !== n));
     renderModal();
   }));
   $("mlist").querySelectorAll("button[data-group]").forEach((b) => (b.onclick = () => {
     const names = CAT.items.filter((i) => i.group === b.dataset.group && (!q || i.name.toLowerCase().includes(q))).map((i) => i.name);
     const all = names.every((n) => sel.has(n));
-    draft[editSite] = all ? draft[editSite].filter((n) => !names.includes(n)) : [...new Set([...draft[editSite], ...names])];
+    setSel(all ? getSel().filter((n) => !names.includes(n)) : [...new Set([...getSel(), ...names])]);
     renderModal();
   }));
 }
 $("msearch").oninput = () => renderModal();
-$("mreset").onclick = () => { draft[editSite] = [...CAT.defaults[editSite]]; renderModal(); };
+$("mreset").onclick = () => {
+  if (modalMode === "proto") draftList = [...CAT.protoById[$("proto").value].defaults[view_.intent]];
+  else draft[editSite] = [...CAT.defaults[editSite]];
+  renderModal();
+};
+$("muse").onclick = () => {
+  if (!draftList.length) return alert("Cần chọn ít nhất 1 cơ quan");
+  caseNames = [...draftList]; closeModal(); renderProto();
+};
 const closeModal = () => ($("modal").hidden = true);
 $("mclose").onclick = closeModal; $("mcancel").onclick = closeModal;
 $("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
 $("msave").onclick = async () => {
+  if (modalMode === "proto") {
+    try {
+      const pid = $("proto").value, d = CAT.protoById[pid].defaults[view_.intent];
+      const same = JSON.stringify(draftList) === JSON.stringify(d);
+      const r = await api("/api/protocol-presets", { method: "POST", body: JSON.stringify(
+        same ? { protocol: pid, intent: view_.intent, reset: true } : { protocol: pid, intent: view_.intent, names: draftList }) });
+      CAT.protocol_names = r.protocol_names; caseNames = [...CAT.protocol_names[pid][view_.intent]];
+      closeModal(); renderProto();
+    } catch (e) { alert("Lỗi: " + e.message); }
+    return;
+  }
   try {
     for (const site of Object.keys(CAT.sites)) {
       if (JSON.stringify(draft[site]) === JSON.stringify(CAT.presets[site])) continue;
