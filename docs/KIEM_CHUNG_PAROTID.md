@@ -1,5 +1,9 @@
 # Kiểm chứng: hiệu chỉnh tuyến mang tai (thử nghiệm)
 
+> **Trạng thái: ĐÃ ẨN khỏi app.** Thử trên ca vòm thật của khoa (MacBook): chạy ~2 giờ và contour hiệu chỉnh
+> **xấu hơn** bản gốc. Kết quả tốt trên HaN-Seg không lặp lại được trên ảnh của khoa → không dùng.
+> Hướng thay thế: thu thập contour bác sĩ đã duyệt để huấn luyện model của khoa.
+
 **Dữ liệu:** HaN-Seg (Podobnik et al., *Medical Physics* 2023, doi:10.1002/mp.16197), CT lập kế hoạch xạ trị đầu cổ
 có contour tuyến mang tai do chuyên gia vẽ. 8 ca đầu: **ca 1–4 để chỉnh thông số**, **ca 5–8 để kiểm tra** (không dùng
 khi chỉnh, thông số chọn theo ca 1–4). Chạy trên CPU, chế độ đầy đủ.

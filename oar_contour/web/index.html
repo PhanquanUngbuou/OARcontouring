@@ -447,7 +447,7 @@ function renderSetup() {
   }
   let names = currentNames();
   const hasParotid = isProto(v) && caseNames && caseNames.some((n) => n === "Parotid_L" || n === "Parotid_R");
-  $("refineRow").hidden = !hasParotid;
+  $("refineRow").hidden = true;  // tạm ẩn: thử trên ca thật của khoa cho kết quả xấu hơn
   if (hasParotid) {
     const withMarks = [...new Set([...caseNames, ...CAT.parotid_landmarks])];
     const extra = extraMinutes(caseNames, withMarks);
