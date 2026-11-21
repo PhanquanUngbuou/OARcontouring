@@ -102,4 +102,4 @@ LANDMARK_NAMES = ["Bone_Mandible", "Musc_Masseter_L", "Musc_Masseter_R", "Musc_P
                   "A_Carotid_Int_R", "V_Jugular_Int_L", "V_Jugular_Int_R", "Canal_Auditory_Ext_L", "Canal_Auditory_Ext_R"]
 REFINED = {"Parotid_L": ("left", "parotid_gland_left", "Parotid_L_Ref", (0, 230, 255)),
            "Parotid_R": ("right", "parotid_gland_right", "Parotid_R_Ref", (0, 170, 255))}
-DEFAULTS = dict(d_xy=5.0, d_z=8.0, hu_pad=10.0)  # sẽ cập nhật theo kết quả kiểm chứng
+DEFAULTS = dict(d_xy=7.0, d_z=6.0, hu_pad=10.0)  # chỉnh trên HaN-Seg ca 1–4, kiểm chứng ca 5–8 (docs/KIEM_CHUNG_PAROTID.md)
