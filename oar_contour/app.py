@@ -694,6 +694,97 @@ class JobManager:
         job.approved = True
         return {"stats": stats}
 
+    # ---------------------------------------------------------- dọn dẹp & xuất dữ liệu
+    def _deletable(self) -> list[Job]:
+        """Ca chưa duyệt, đã xong hoặc lỗi, không đang sửa dở."""
+        return [j for j in self.jobs.values()
+                if not j.approved and j.status in ("done", "error")
+                and not (j.viewer is not None and j.viewer.dirty)]
+
+    @staticmethod
+    def _size_mb(path: Path) -> float:
+        return sum(f.stat().st_size for f in path.rglob("*") if f.is_file()) / 1e6 if path.exists() else 0.0
+
+    def cleanup_preview(self) -> dict:
+        jobs = self._deletable()
+        return {"count": len(jobs), "mb": round(sum(self._size_mb(j.dir) for j in jobs))}
+
+    def cleanup(self) -> dict:
+        jobs = self._deletable()
+        mb = sum(self._size_mb(j.dir) for j in jobs)
+        for j in jobs:
+            shutil.rmtree(j.dir, ignore_errors=True)
+            self.jobs.pop(j.id, None)
+        return {"deleted": len(jobs), "mb": round(mb)}
+
+    def export_dataset(self, out_dir: Path | None = None) -> dict:
+        """Xuất các ca đã duyệt dạng ẩn danh: ảnh CT + nhãn từng cấu trúc (NIfTI), mã ca ngẫu nhiên.
+
+        NIfTI chỉ chứa ảnh và hình học (kích thước, khoảng cách điểm ảnh), không có tên/mã bệnh nhân, ngày chụp.
+        Bảng đối chiếu mã ca <-> ca gốc lưu ở <thư mục kết quả>/_export_map.json, KHÔNG nằm trong thư mục xuất."""
+        import SimpleITK as sitk
+        from rt_utils import RTStructBuilder
+
+        from .segment import load_ct_series
+
+        out_dir = Path(out_dir or Path.home() / "QuanContour_XuatAnDanh")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        map_path = self.root / "_export_map.json"
+        try:
+            mapping = json.loads(map_path.read_text(encoding="utf-8"))
+        except Exception:
+            mapping = {}
+        exported, summary = 0, {}
+        for job in sorted(self.jobs.values(), key=lambda j: j.id):
+            rs = job.dir / "RS_DUYET.dcm"
+            if not job.approved or not rs.exists():
+                continue
+            code = mapping.get(job.id) or f"case_{uuid.uuid4().hex[:8]}"
+            mapping[job.id] = code
+            cdir = out_dir / code
+            done_flag = cdir / "meta.json"
+            if done_flag.exists() and done_flag.stat().st_mtime >= rs.stat().st_mtime:
+                names = json.loads(done_flag.read_text(encoding="utf-8")).get("structures", [])
+            else:
+                image = load_ct_series(job.ct_dir)
+                rt = RTStructBuilder.create_from(str(job.ct_dir), str(rs))
+                slice_index = [int(round(image.TransformPhysicalPointToContinuousIndex(
+                    [float(v) for v in ds.ImagePositionPatient])[2])) for ds in rt.series_data]
+                (cdir / "labels").mkdir(parents=True, exist_ok=True)
+                sitk.WriteImage(image, str(cdir / "ct.nii.gz"), useCompression=True)
+                names = []
+                for name in rt.get_roi_names():
+                    m = rt.get_roi_mask_by_name(name)  # (rows, cols, n) theo thứ tự rt_utils
+                    arr = np.zeros(image.GetSize()[::-1], np.uint8)
+                    for n_, k in enumerate(slice_index):
+                        arr[k] = m[:, :, n_]
+                    if not arr.any():
+                        continue
+                    lab = sitk.GetImageFromArray(arr)
+                    lab.CopyInformation(image)
+                    safe = re.sub(r"[^A-Za-z0-9_]", "_", name)
+                    sitk.WriteImage(lab, str(cdir / "labels" / f"{safe}.nii.gz"), useCompression=True)
+                    names.append(safe)
+                stats = {}
+                try:
+                    stats = {st["name"]: st for st in json.loads((job.dir / "duyet.json").read_text(encoding="utf-8")).get("stats", [])}
+                except Exception:
+                    pass
+                done_flag.write_text(json.dumps({
+                    "code": code, "protocol": job.protocol, "intent": job.intent, "structures": names,
+                    "spacing_mm": list(image.GetSpacing()), "size": list(image.GetSize()),
+                    "agreement_auto_vs_approved": {n: stats[n].get("dice") for n in names if n in stats},
+                }, ensure_ascii=False, indent=1), encoding="utf-8")
+            exported += 1
+            for n in names:
+                summary[n] = summary.get(n, 0) + 1
+        map_path.write_text(json.dumps(mapping, indent=1), encoding="utf-8")
+        (out_dir / "dataset.json").write_text(json.dumps(
+            {"cases": exported, "structures": dict(sorted(summary.items())),
+             "note": "Du lieu da an danh (khong ten/ma benh nhan, khong ngay chup). Chi dung cho nghien cuu da duoc phe duyet."},
+            ensure_ascii=False, indent=1), encoding="utf-8")
+        return {"cases": exported, "folder": str(out_dir)}
+
     def dataset(self) -> dict:
         """Tổng hợp kho dữ liệu đã duyệt: số ca, mỗi cấu trúc phải sửa bao nhiêu."""
         per: dict[str, dict] = {}
@@ -841,6 +932,8 @@ def make_handler(manager: JobManager, server_ref: dict):
                                                                    fromlist=["x"]).LANDMARK_NAMES})
             if parts == ["api", "dataset"]:
                 return self._json(manager.dataset())
+            if parts == ["api", "cleanup"]:
+                return self._json(manager.cleanup_preview())
             if parts == ["api", "info"]:
                 acc = guess_accelerator()
                 sp = manager._settings().get("speed", {})
@@ -920,6 +1013,19 @@ def make_handler(manager: JobManager, server_ref: dict):
                 except ValueError as e:
                     return self._json({"error": str(e)}, 400)
                 return self._json({"protocol_names": manager.protocol_names()})
+            if parts == ["api", "cleanup"]:
+                return self._json(manager.cleanup())
+            if parts == ["api", "export"]:
+                try:
+                    return self._json(manager.export_dataset())
+                except Exception as e:  # noqa: BLE001
+                    return self._json({"error": f"Không xuất được: {e}"}, 500)
+            if parts == ["api", "open-export"]:
+                folder = Path.home() / "QuanContour_XuatAnDanh"
+                folder.mkdir(exist_ok=True)
+                opener = ["open"] if sys.platform == "darwin" else ["explorer"] if sys.platform.startswith("win") else ["xdg-open"]
+                subprocess.Popen(opener + [str(folder)])
+                return self._json({"ok": True})
             if parts == ["api", "presets"]:
                 data = json.loads(self._body() or b"{}")
                 try:

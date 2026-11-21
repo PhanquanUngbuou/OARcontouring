@@ -73,6 +73,17 @@ Từ giờ **không cần Terminal nữa**.
 
 Khi kho đủ khoảng 50–100 ca mỗi vùng, các ca này dùng để huấn luyện model của khoa.
 
+### Xuất kho dữ liệu ẩn danh, dọn dung lượng
+
+- Thẻ **Kho dữ liệu huấn luyện** → **Xuất kho dữ liệu ẩn danh**: các ca đã duyệt được xuất vào thư mục
+  `~/QuanContour_XuatAnDanh`, mỗi ca một thư mục `case_xxxxxxxx` gồm `ct.nii.gz` (chỉ ảnh, không tên/mã bệnh nhân,
+  không ngày chụp), thư mục `labels/` (mỗi cơ quan một file) và `meta.json`. Bảng đối chiếu mã ca ↔ ca thật chỉ nằm
+  trong `~/OAR_ketqua/_export_map.json` trên máy này.
+- Đưa thư mục xuất lên Google Drive **chỉ sau khi viện cho phép**; dùng tài khoản có xác thực 2 lớp, không chia sẻ
+  bằng link. Ảnh CT đầu cổ vẫn dựng lại được khuôn mặt nên ẩn danh không triệt để.
+- **Xoá các ca chưa duyệt…** (dưới danh sách "Ca gần đây"): xoá các ca chỉ chạy thử, giữ lại ca đã duyệt và ca đang
+  chạy; app báo trước số ca và dung lượng.
+
 ## 4. (Tuỳ chọn) Chạy bằng dòng lệnh
 
 1. Từ Monaco hoặc PACS, export **1 series CT mô phỏng** (DICOM) vào một thư mục, ví dụ

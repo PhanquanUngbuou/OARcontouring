@@ -265,10 +265,16 @@ footer.lic button { font-size: 11px; padding: 0; border: none; background: none;
     <div class="card" id="dsCard" hidden>
       <h2>Kho dữ liệu huấn luyện</h2>
       <div class="small" id="dsBody"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="small" id="exportBtn" title="Ảnh CT + nhãn, không tên/mã bệnh nhân, không ngày chụp">Xuất kho dữ liệu ẩn danh</button>
+        <button class="ghost small" id="openExport">Mở thư mục xuất</button>
+      </div>
+      <div class="muted small" id="exportMsg" style="margin-top:6px"></div>
     </div>
     <div class="card">
       <h2>Ca gần đây</h2>
       <ul class="jobs" id="jobs"><li class="muted">Chưa có ca nào</li></ul>
+      <button class="ghost small" id="cleanupBtn" style="margin-top:6px">Xoá các ca chưa duyệt…</button>
     </div>
     <footer class="lic"><button id="lic">Thông tin & giấy phép</button></footer>
   </aside>
@@ -1050,6 +1056,27 @@ $("msave").onclick = async () => {
     }
     closeModal(); renderSetup();
   } catch (e) { alert("Lỗi: " + e.message); }
+};
+
+$("exportBtn").onclick = async () => {
+  $("exportBtn").disabled = true; $("exportMsg").textContent = "Đang xuất…";
+  try {
+    const r = await api("/api/export", { method: "POST", body: "{}" });
+    $("exportMsg").innerHTML = `Đã xuất <b>${r.cases} ca</b> vào <code>${esc(r.folder)}</code>. ` +
+      "Chỉ đưa lên Google Drive sau khi viện cho phép; không bật chia sẻ bằng link.";
+  } catch (e) { $("exportMsg").textContent = "Lỗi: " + e.message; }
+  finally { $("exportBtn").disabled = false; }
+};
+$("openExport").onclick = () => api("/api/open-export", { method: "POST", body: "{}" }).catch(() => {});
+$("cleanupBtn").onclick = async () => {
+  const p = await api("/api/cleanup").catch(() => null);
+  if (!p) return;
+  if (!p.count) { alert("Không có ca chưa duyệt nào để xoá."); return; }
+  if (!confirm(`Xoá ${p.count} ca chưa duyệt (khoảng ${p.mb} MB)?\nCa đã duyệt và ca đang chạy được giữ lại. Không hoàn tác được.`)) return;
+  const r = await api("/api/cleanup", { method: "POST", body: "{}" });
+  alert(`Đã xoá ${r.deleted} ca, giải phóng khoảng ${r.mb} MB.`);
+  if (current && !document.querySelector("#jobs li.sel")) setMode("setup");
+  refreshJobs();
 };
 
 async function loadDataset() {

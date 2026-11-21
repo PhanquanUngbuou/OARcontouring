@@ -261,3 +261,50 @@ def test_edit_contours_approve_and_dataset(ct_dir, tmp_path):
         assert JobManager(tmp_path / "results", None).jobs[jid].approved
     finally:
         server.shutdown()
+
+
+def test_export_anonymized_and_cleanup(ct_dir, tmp_path):
+    import SimpleITK as sitk
+
+    manager = JobManager(tmp_path / "results", lambda device: FakeSegmenter(thorax_labels()))
+    jobs = []
+    for k in range(2):
+        job = manager.create("thorax", False, False, protocol="custom", intent="curative", names=["Heart", "Lung_L"])
+        for f in ct_dir.iterdir():
+            (job.dir / "upload" / f.name).write_bytes(f.read_bytes())
+        manager._run(job)
+        assert job.status == "done", job.error
+        jobs.append(job)
+    v = manager.viewer(jobs[0])
+    v.add_structure("Brainstem", (255, 0, 0))
+    i = v.centers()["Heart"]["axial"]
+    v.edit("Brainstem", "axial", i, "add", [(20, 20)], 4)
+    manager.approve(jobs[0])
+
+    out = tmp_path / "export"
+    r = manager.export_dataset(out)
+    assert r["cases"] == 1
+    cases = [d for d in out.iterdir() if d.is_dir()]
+    assert len(cases) == 1 and cases[0].name.startswith("case_")
+    labels = {f.name for f in (cases[0] / "labels").iterdir()}
+    assert {"Heart.nii.gz", "Lung_L.nii.gz", "Brainstem.nii.gz"} <= labels
+    ct = sitk.ReadImage(str(cases[0] / "ct.nii.gz"))
+    lab = sitk.ReadImage(str(cases[0] / "labels" / "Heart.nii.gz"))
+    assert ct.GetSize() == lab.GetSize()
+    assert int(sitk.GetArrayFromImage(lab).sum()) == int(v.full_mask("Heart").sum())
+    # không còn thông tin nhận dạng trong thư mục xuất
+    blob = b"".join(f.read_bytes() for f in out.rglob("*") if f.is_file() and f.suffix == ".json")
+    assert b"PHANTOM" not in blob and jobs[0].id.encode() not in blob
+    import gzip
+    assert b"PHANTOM" not in gzip.decompress((cases[0] / "ct.nii.gz").read_bytes())
+    # bảng đối chiếu nằm ngoài thư mục xuất; xuất lại không tạo mã mới
+    assert (tmp_path / "results" / "_export_map.json").exists()
+    manager.export_dataset(out)
+    assert len([d for d in out.iterdir() if d.is_dir()]) == 1
+
+    # xoá ca chưa duyệt: giữ ca đã duyệt
+    pv = manager.cleanup_preview()
+    assert pv["count"] == 1
+    res = manager.cleanup()
+    assert res["deleted"] == 1 and jobs[0].id in manager.jobs and jobs[1].id not in manager.jobs
+    assert not jobs[1].dir.exists() and jobs[0].dir.exists()
