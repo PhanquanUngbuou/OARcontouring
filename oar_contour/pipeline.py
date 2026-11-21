@@ -304,7 +304,9 @@ def run_pipeline(
                 m = label_mask(b)
                 if m is not None:
                     bar |= m
-            refined = _refine(hu, masks[name], bar, (sz, sy, sx), **DEFAULTS)
+            d = image.GetDirection()  # cột 0 = hướng chỉ số x, cột 1 = hướng chỉ số y (LPS)
+            refined = _refine(hu, masks[name], bar, (sz, sy, sx), side=side,
+                              left_sign=1 if d[0] >= 0 else -1, post_sign=1 if d[4] >= 0 else -1, **DEFAULTS)
             if refined.sum() > masks[name].sum():
                 masks[out_name] = refined
                 extra_colors[out_name] = color

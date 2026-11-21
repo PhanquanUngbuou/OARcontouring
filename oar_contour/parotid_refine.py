@@ -47,8 +47,18 @@ def refine_parotid(
     hu_pad: float = 20.0,
     lo_min: float = -150.0,
     hi_max: float = 90.0,
+    side: str | None = None,
+    lateral_max: float | None = None,
+    posterior_max: float | None = None,
+    post_sign: int = 1,
+    left_sign: int = 1,
 ) -> np.ndarray:
-    """ct (HU), parotid, barriers: mảng (z, y, x) cùng lưới. Trả về mask tuyến đã hiệu chỉnh."""
+    """ct (HU), parotid, barriers: mảng (z, y, x) cùng lưới. Trả về mask tuyến đã hiệu chỉnh.
+
+    side + lateral_max/posterior_max (mm): giới hạn nở ra phía ngoài (về phía da) và phía sau (về phía cơ ức đòn
+    chũm), vì tuyến thường bị vẽ thiếu ở phía trong (thùy sâu), phía trước và cực trên.
+    post_sign / left_sign: +1 nếu chỉ số y tăng = phía sau / chỉ số x tăng = bên trái bệnh nhân (ảnh nằm ngửa
+    chuẩn); -1 nếu ngược lại (pipeline tính từ hướng ảnh DICOM)."""
     if not parotid.any():
         return parotid
     sz, sy, sx = spacing_zyx
@@ -82,6 +92,20 @@ def refine_parotid(
         grown = ndimage.binary_dilation(grown, structure=st_z) & allowed
         z_done += 1
 
+    if side and (lateral_max is not None or posterior_max is not None):
+        # vị trí so với điểm gần nhất của contour ban đầu
+        _, (iz, iy, ix) = ndimage.distance_transform_edt(~p, sampling=(sz, sy, sx), return_indices=True)
+        zz_, yy_, xx_ = np.indices(p.shape)
+        dy = (yy_ - iy) * sy * post_sign  # >0: ra sau
+        dx = (xx_ - ix) * sx * left_sign  # >0: về bên trái bệnh nhân
+        lat = dx if side == "left" else -dx  # >0: ra ngoài
+        keep = np.ones(p.shape, bool)
+        if posterior_max is not None:
+            keep &= dy <= posterior_max
+        if lateral_max is not None:
+            keep &= lat <= lateral_max
+        grown &= keep | p
+
     # làm trơn + lấp lỗ từng lát, rồi giữ khối liền với contour ban đầu
     grown = ndimage.binary_closing(grown, structure=np.ones((1, 3, 3), bool), iterations=1) & ~bar | p
     for k in range(grown.shape[0]):
@@ -102,4 +126,72 @@ LANDMARK_NAMES = ["Bone_Mandible", "Musc_Masseter_L", "Musc_Masseter_R", "Musc_P
                   "A_Carotid_Int_R", "V_Jugular_Int_L", "V_Jugular_Int_R", "Canal_Auditory_Ext_L", "Canal_Auditory_Ext_R"]
 REFINED = {"Parotid_L": ("left", "parotid_gland_left", "Parotid_L_Ref", (0, 230, 255)),
            "Parotid_R": ("right", "parotid_gland_right", "Parotid_R_Ref", (0, 170, 255))}
-DEFAULTS = dict(d_xy=7.0, d_z=6.0, hu_pad=10.0)  # chỉnh trên HaN-Seg ca 1–4, kiểm chứng ca 5–8 (docs/KIEM_CHUNG_PAROTID.md)
+# chỉnh trên HaN-Seg ca 1–4, kiểm chứng ca 5–8 (docs/KIEM_CHUNG_PAROTID.md)
+DEFAULTS = dict(d_xy=10.0, d_z=8.0, hu_pad=10.0, lateral_max=3.0, posterior_max=1.0)
+
+
+def deep_lobe(
+    ct: np.ndarray,
+    parotid: np.ndarray,
+    barriers: np.ndarray,
+    corridor_marks: np.ndarray,
+    medial_marks: np.ndarray,
+    side: str,
+    spacing_zyx: tuple[float, float, float],
+    d_max: float = 20.0,
+    hu_pad: float = 10.0,
+    lo_min: float = -150.0,
+    hi_max: float = 90.0,
+) -> np.ndarray:
+    """Bước 2: nở có định hướng vào thùy sâu, từng lát cắt.
+
+    Hành lang = bao lồi (tuyến + cơ chân bướm trong + mỏm trâm + động mạch cảnh trong) trên lát đó, không vượt
+    vào phía trong bờ ngoài của mỏm trâm / động mạch cảnh trong (medial_marks), trừ các cấu trúc chặn.
+    Chỉ nở trong mặt phẳng, tối đa d_max mm, qua mô có HU giống tuyến.
+    side: "left" (bên trái bệnh nhân = x lớn) hoặc "right".
+    """
+    import cv2
+
+    if not parotid.any():
+        return parotid
+    sz, sy, sx = spacing_zyx
+    pxy = min(sy, sx)
+    lo, hi = _hu_range(ct, parotid, hu_pad, lo_min, hi_max)
+    gap = max(1, int(round(1.0 / pxy)))
+    out = parotid.copy()
+    n_iter = int(round(d_max / pxy))
+    st = ndimage.generate_binary_structure(2, 1)
+    for k in np.nonzero(parotid.any(axis=(1, 2)))[0]:
+        p = parotid[k]
+        marks = corridor_marks[k] | p
+        if not medial_marks[k].any() or not corridor_marks[k].any():
+            continue
+        pts = np.column_stack(np.nonzero(marks)[::-1]).astype(np.int32)  # (x, y)
+        hull = np.zeros(p.shape, np.uint8)
+        cv2.fillConvexPoly(hull, cv2.convexHull(pts), 1)
+        corridor = hull.astype(bool)
+        # không vượt vào phía trong bờ ngoài của mỏm trâm / động mạch cảnh trong
+        mx = np.nonzero(medial_marks[k].any(axis=0))[0]
+        xs = np.arange(p.shape[1])
+        corridor &= (xs >= mx.max())[None, :] if side == "left" else (xs <= mx.min())[None, :]
+        bar = ndimage.binary_dilation(barriers[k], structure=np.ones((3, 3), bool), iterations=gap)
+        allowed = corridor & ~bar & (ct[k] >= lo) & (ct[k] <= hi) | p
+        g = p.copy()
+        for _ in range(n_iter):
+            nxt = ndimage.binary_dilation(g, structure=st) & allowed
+            if (nxt == g).all():
+                break
+            g = nxt
+        g = ndimage.binary_closing(g, structure=np.ones((3, 3), bool)) & (allowed | p)
+        out[k] = ndimage.binary_fill_holes(g)
+    return out
+
+
+CORRIDOR_LABELS = {
+    "left": ["medial_pterygoid_left", "styloid_process_left", "internal_carotid_artery_left"],
+    "right": ["medial_pterygoid_right", "styloid_process_right", "internal_carotid_artery_right"],
+}
+MEDIAL_LABELS = {
+    "left": ["styloid_process_left", "internal_carotid_artery_left"],
+    "right": ["styloid_process_right", "internal_carotid_artery_right"],
+}
