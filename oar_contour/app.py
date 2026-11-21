@@ -192,6 +192,7 @@ class Job:
     protocol: str = ""  # id phác đồ (vị trí u); rỗng = chọn theo vùng giải phẫu
     intent: str = ""  # curative | palliative
     names: list = field(default_factory=list)  # danh sách OAR cố định của ca (theo phác đồ)
+    refine_parotid: bool = False  # hiệu chỉnh tuyến mang tai (thử nghiệm)
     # tiến trình
     plan: list = field(default_factory=list)  # [(tên bước, trọng số)]
     step: int = 0
@@ -223,7 +224,7 @@ class Job:
             return None
         from .protocols import PROTOCOL_BY_ID
 
-        return {"names": list(self.names), "manual": [], "label": self.label()}
+        return {"names": list(self.names), "manual": [], "label": self.label(), "refine_parotid": self.refine_parotid}
 
     def label(self) -> str:
         if not self.protocol:
@@ -398,7 +399,7 @@ class JobManager:
         self._settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
     def create(self, site: str, fast: bool, demo: bool, device: str = "auto", protocol: str = "",
-               intent: str = "", names: list[str] | None = None) -> Job:
+               intent: str = "", names: list[str] | None = None, refine_parotid: bool = False) -> Job:
         jid = datetime.now().strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
         job = Job(id=jid, dir=self.root / jid, site=site, fast=fast, demo=demo,
                   device=device if device in ("auto", "cpu") else "auto", presets=self.presets())
@@ -418,6 +419,7 @@ class JobManager:
             job.names = expand(names) if names else self.protocol_names()[protocol][intent]
             if not job.names:
                 raise ValueError("Danh sách cơ quan trống")
+        job.refine_parotid = bool(refine_parotid) and bool(job.protocol)
         (job.dir / "upload").mkdir(parents=True)
         self.jobs[jid] = job
         return job
@@ -572,6 +574,7 @@ def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter, pres
     spec = spec or {}
     report = run_pipeline(ct_dir, rtstruct, seg, site=site, presets=presets or None,
                           names=spec.get("names"), manual=spec.get("manual"), label=spec.get("label"),
+                          refine_parotid=bool(spec.get("refine_parotid")),
                           on_plan=(lambda p: event("plan", p)) if event else None,
                           on_step=(lambda i: event("step", i)) if event else None,
                           progress=say)
@@ -675,7 +678,9 @@ def make_handler(manager: JobManager, server_ref: dict):
                                    "tasks": {t: v for t, v in TASKS.items()},
                                    "presets": manager.presets(), "defaults": DEFAULT_PRESETS,
                                    "protocols": protocols, "protocol_names": manager.protocol_names(),
-                                   "intents": INTENTS, "anatomy": ANATOMY_ORDER})
+                                   "intents": INTENTS, "anatomy": ANATOMY_ORDER,
+                                   "parotid_landmarks": __import__("oar_contour.parotid_refine",
+                                                                   fromlist=["x"]).LANDMARK_NAMES})
             if parts == ["api", "info"]:
                 acc = guess_accelerator()
                 sp = manager._settings().get("speed", {})
@@ -737,7 +742,8 @@ def make_handler(manager: JobManager, server_ref: dict):
                 try:
                     job = manager.create(site, bool(data.get("fast")), bool(data.get("demo")),
                                          str(data.get("device", "auto")), str(data.get("protocol") or ""),
-                                         str(data.get("intent") or ""), data.get("names"))
+                                         str(data.get("intent") or ""), data.get("names"),
+                                         bool(data.get("refine_parotid")))
                 except ValueError as e:
                     return self._json({"error": str(e)}, 400)
                 if job.demo:

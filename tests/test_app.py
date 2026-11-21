@@ -181,9 +181,9 @@ def test_protocol_job_api(ct_dir, tmp_path):
         assert manager.protocol_names()["breast"]["curative"] == ["Heart", "Lung_L"]  # không bị ghi đè
         # trường hợp khác: tự chọn OAR
         jc = json.loads(_req(base, "/api/jobs", "POST", json.dumps(
-            {"protocol": "custom", "intent": "palliative", "names": ["Heart", "Vertebrae_*"]}).encode())[2])
+            {"protocol": "custom", "intent": "palliative", "names": ["Heart", "Bone_Vertebra_*"]}).encode())[2])
         assert jc["label"] == "Tự chọn OAR · triệu chứng"
-        assert "Vertebrae_T5" in manager.jobs[jc["id"]].names and "Heart" in manager.jobs[jc["id"]].names
+        assert "Bone_Vertebra_T5" in manager.jobs[jc["id"]].names and "Heart" in manager.jobs[jc["id"]].names
         try:
             _req(base, "/api/jobs", "POST", json.dumps({"protocol": "custom", "intent": "curative", "names": []}).encode())
             raise AssertionError("phải báo lỗi")

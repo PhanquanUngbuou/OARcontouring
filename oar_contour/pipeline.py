@@ -195,6 +195,7 @@ def run_pipeline(
     label: str | None = None,
     on_plan: Callable[[list[tuple[str, float]]], None] | None = None,
     on_step: Callable[[int], None] | None = None,
+    refine_parotid: bool = False,
 ) -> Report:
     """names: danh sách cấu trúc cố định (theo phác đồ) -> bỏ qua nhận diện vùng.
     manual: OAR bác sĩ phải tự vẽ (hiện trong báo cáo); label: tên phác đồ."""
@@ -217,6 +218,10 @@ def run_pipeline(
     else:
         sites = [s.strip() for s in site.split(",")]
 
+    if names and refine_parotid and ({"Parotid_L", "Parotid_R"} & set(names)):
+        from .parotid_refine import LANDMARK_NAMES
+
+        names = list(names) + [n for n in LANDMARK_NAMES if n not in names]  # mốc chặn: vẽ và xuất luôn
     if names:
         from .catalog import catalog
 
@@ -276,9 +281,36 @@ def run_pipeline(
         labelmaps[task] = full
 
     masks, empty = build_masks(structures, labelmaps, class_maps, image, min_voxels)
+    extra_colors: dict[str, tuple[int, int, int]] = {}
+    if refine_parotid and any(n in masks for n in ("Parotid_L", "Parotid_R")):
+        from .parotid_refine import BARRIER_LABELS, DEFAULTS, REFINED, refine_parotid as _refine
+
+        say("Hiệu chỉnh tuyến mang tai")
+
+        def label_mask(label: str):
+            for task, cmap in class_maps.items():
+                for idx, name in cmap.items():
+                    if name == label and task in labelmaps:
+                        return labelmaps[task] == idx
+            return None
+
+        hu = sitk.GetArrayViewFromImage(image)
+        sx, sy, sz = image.GetSpacing()
+        for name, (side, label, out_name, color) in REFINED.items():
+            if name not in masks:
+                continue
+            bar = np.zeros(hu.shape, bool)
+            for b in BARRIER_LABELS[side]:
+                m = label_mask(b)
+                if m is not None:
+                    bar |= m
+            refined = _refine(hu, masks[name], bar, (sz, sy, sx), **DEFAULTS)
+            if refined.sum() > masks[name].sum():
+                masks[out_name] = refined
+                extra_colors[out_name] = color
     if not masks:
         raise RuntimeError("Không tạo được cấu trúc nào.")
-    colors = {s.name: s.color for s in structures}
+    colors = {s.name: s.color for s in structures} | extra_colors
     next_step()
     say("Ghi kết quả")
     write_rtstruct(dicom_dir, image, masks, colors, out_path)
@@ -290,4 +322,6 @@ def run_pipeline(
     else:
         report.not_covered = list(dict.fromkeys(x for s in sites for x in NOT_COVERED.get(s, [])))
     report.notes = {s.name: s.note for s in structures if s.note and s.name in masks}
+    for n in extra_colors:
+        report.notes[n] = "Tuyến mang tai đã hiệu chỉnh (thử nghiệm): so sánh với bản gốc trước khi dùng."
     return report

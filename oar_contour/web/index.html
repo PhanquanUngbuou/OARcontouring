@@ -72,6 +72,8 @@ aside { display: flex; flex-direction: column; gap: 14px; overflow: auto; min-he
 .manual { background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-line); border-radius: 9px; padding: 9px 11px; font-size: 12.5px; margin-top: 10px; }
 .manual b { display: block; margin-bottom: 2px; }
 .pnote { margin-top: 8px; }
+.refine { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft); cursor: pointer; }
+.refine input { margin-top: 3px; }
 .editrow { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
 details.adv { margin-top: 2px; }
 details.adv summary { cursor: pointer; color: var(--muted); font-size: 13px; }
@@ -189,6 +191,8 @@ footer.lic button { font-size: 11px; padding: 0; border: none; background: none;
             <select id="customBase"><option value="">— Danh sách trống, tự tích từ đầu —</option></select>
           </div>
           <div class="oars" id="oars"></div>
+          <label class="refine small" id="refineRow" hidden><input type="checkbox" id="refine">
+            <span><b>Hiệu chỉnh tuyến mang tai</b> (thử nghiệm): vẽ thêm cơ nhai, cơ hai bụng, mỏm trâm, mạch cảnh, ống tai làm mốc và tạo thêm Parotid_L_Ref / Parotid_R_Ref. <span class="tag" id="refineCost"></span></span></label>
           <div class="muted small pnote" id="pnote"></div>
           <div class="editrow"><span class="muted small" id="editedTag"></span><button id="editProto">Mở rộng / chỉnh sửa danh sách…</button></div>
         </div>
@@ -339,7 +343,7 @@ function anatSections(names) {
     list.forEach((n) => used.add(n));
     if (list.length) out.push({ title, names: list });
   }
-  const vert = names.filter((n) => !used.has(n) && n.startsWith("Vertebrae_"));
+  const vert = names.filter((n) => !used.has(n) && n.startsWith("Bone_Vertebra_"));
   vert.forEach((n) => used.add(n));
   const rest = names.filter((n) => !used.has(n)).sort((a, b) => a.localeCompare(b));
   if (rest.length) out.push({ title: "Khác", names: rest });
@@ -441,7 +445,15 @@ function renderSetup() {
     const site = $("site").value;
     $("presetline").textContent = site === "auto" ? "Dùng danh sách của vùng được nhận ra" : `${(CAT.presets[site] || []).length} cơ quan`;
   }
-  const names = currentNames();
+  let names = currentNames();
+  const hasParotid = isProto(v) && caseNames && caseNames.some((n) => n === "Parotid_L" || n === "Parotid_R");
+  $("refineRow").hidden = !hasParotid;
+  if (hasParotid) {
+    const withMarks = [...new Set([...caseNames, ...CAT.parotid_landmarks])];
+    const extra = extraMinutes(caseNames, withMarks);
+    $("refineCost").textContent = extra > 0 ? `+${extra} phút` : "";
+    if ($("refine").checked) names = withMarks;
+  }
   $("preEta").textContent = names && names.length ? `Dự kiến khoảng ${minutesFor(names)} phút trên máy này` : "";
   const empty = isProto(v) && !(caseNames && caseNames.length);
   $("run").disabled = !picked.length || !v || empty;
@@ -452,6 +464,7 @@ $("proto").addEventListener("change", onProtoChange);
 $("customBase").addEventListener("change", onProtoChange);
 $("site").addEventListener("change", renderSetup);
 $("fast").addEventListener("change", renderSetup);
+$("refine").addEventListener("change", renderSetup);
 document.querySelectorAll("[data-intent]").forEach((b) => (b.onclick = () => {
   document.querySelectorAll("[data-intent]").forEach((x) => x.classList.toggle("on", x === b));
   intent = b.dataset.intent; onProtoChange();
@@ -468,8 +481,9 @@ $("files").onchange = (e) => {
 };
 function caseSpec() {
   const v = $("proto").value;
-  if (v === "__custom") return { protocol: "custom", intent, names: caseNames };
-  if (isProto(v)) return { protocol: v, intent, names: caseNames };
+  const refine_parotid = !$("refineRow").hidden && $("refine").checked;
+  if (v === "__custom") return { protocol: "custom", intent, names: caseNames, refine_parotid };
+  if (isProto(v)) return { protocol: v, intent, names: caseNames, refine_parotid };
   return { site: $("site").value };
 }
 
@@ -482,7 +496,9 @@ $("run").onclick = async () => {
     const job = await api("/api/jobs", { method: "POST", body: JSON.stringify({ ...caseSpec(), fast: $("fast").checked, device: $("device").value }) });
     const files = [...picked];
     uploadState[job.id] = { done: 0, total: files.length };
-    const nm = currentNames(); if (nm && nm.length) preEstimate[job.id] = minutesFor(nm);
+    let nm = currentNames();
+    if (nm && $("refine").checked && !$("refineRow").hidden) nm = [...new Set([...nm, ...CAT.parotid_landmarks])];
+    if (nm && nm.length) preEstimate[job.id] = minutesFor(nm);
     select(job.id);
     const queue = [...files];
     const worker = async () => {

@@ -83,26 +83,26 @@ Thời gian: 1 đơn vị ≈ 1–2 phút trên MacBook chip M, vài giây trên
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Lung_L, Lung_R, Lungs, Heart, Esophagus, SpinalCord, Trachea, A_Aorta, V_Venacava_S, Ribs, Sternum | toàn thân: nội tạng, tim mạch, cơ–xương, xương sườn | ≈ 4 |
-| **Triệu chứng** | Lung_L, Lung_R, Lungs, Heart, Esophagus, SpinalCord, Trachea, A_Aorta, V_Venacava_S, Ribs, Sternum | toàn thân: nội tạng, tim mạch, cơ–xương, xương sườn | ≈ 4 |
+| **Triệt căn** | Lung_L, Lung_R, Lungs, Heart, Esophagus, SpinalCord, Trachea, A_Aorta, V_Venacava_S, Bone_Ribs, Sternum | toàn thân: nội tạng, tim mạch, cơ–xương, xương sườn | ≈ 4 |
+| **Triệu chứng** | Lung_L, Lung_R, Lungs, Heart, Esophagus, SpinalCord, Trachea, A_Aorta, V_Venacava_S, Bone_Ribs, Sternum | toàn thân: nội tạng, tim mạch, cơ–xương, xương sườn | ≈ 4 |
 
-*Ghi chú:* Ribs/Sternum dùng tham khảo cho thành ngực.
+*Ghi chú:* Bone_Ribs/Sternum dùng tham khảo cho thành ngực.
 
 ### Gan SBRT
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | Liver, Gallbladder, Stomach, Duodenum, Bowel_Small, Colon, Kidney_L, Kidney_R, SpinalCord, Heart, Esophagus, Lung_L, Lung_R, Ribs | toàn thân: nội tạng, tim mạch, cơ–xương, xương sườn | ≈ 4 |
-| **Triệu chứng** | Liver, Gallbladder, Stomach, Duodenum, Bowel_Small, Colon, Kidney_L, Kidney_R, SpinalCord, Heart, Esophagus, Lung_L, Lung_R, Ribs | toàn thân: nội tạng, tim mạch, cơ–xương, xương sườn | ≈ 4 |
+| **Triệt căn** | Liver, Gallbladder, Stomach, Duodenum, Bowel_Small, Colon, Kidney_L, Kidney_R, SpinalCord, Heart, Esophagus, Lung_L, Lung_R, Bone_Ribs | toàn thân: nội tạng, tim mạch, cơ–xương, xương sườn | ≈ 4 |
+| **Triệu chứng** | Liver, Gallbladder, Stomach, Duodenum, Bowel_Small, Colon, Kidney_L, Kidney_R, SpinalCord, Heart, Esophagus, Lung_L, Lung_R, Bone_Ribs | toàn thân: nội tạng, tim mạch, cơ–xương, xương sườn | ≈ 4 |
 
-*Ghi chú:* Liver nên trừ GTV trong Monaco (Liver-GTV). Ribs dùng tham khảo cho thành ngực.
+*Ghi chú:* Liver nên trừ GTV trong Monaco (Liver-GTV). Bone_Ribs dùng tham khảo cho thành ngực.
 
 ### Cột sống SBRT
 
 | | OAR app tự vẽ | Model cần chạy | Thời gian |
 |---|---|---|---|
-| **Triệt căn** | SpinalCord, Esophagus, Trachea, Heart, Lung_L, Lung_R, Lungs, Kidney_L, Kidney_R, Liver, Stomach, Bowel_Small, Colon, Vertebrae (×25) | toàn thân: nội tạng, đốt sống, tim mạch, cơ–xương | ≈ 4 |
-| **Triệu chứng** | SpinalCord, Esophagus, Trachea, Heart, Lung_L, Lung_R, Lungs, Kidney_L, Kidney_R, Liver, Stomach, Bowel_Small, Colon, Vertebrae (×25) | toàn thân: nội tạng, đốt sống, tim mạch, cơ–xương | ≈ 4 |
+| **Triệt căn** | SpinalCord, Esophagus, Trachea, Heart, Lung_L, Lung_R, Lungs, Kidney_L, Kidney_R, Liver, Stomach, Bowel_Small, Colon, Bone_Vertebra_S1, Bone_Vertebra_L5, Bone_Vertebra_L4, Bone_Vertebra_L3, Bone_Vertebra_L2, Bone_Vertebra_L1, Bone_Vertebra_T12, Bone_Vertebra_T11, Bone_Vertebra_T10, Bone_Vertebra_T9, Bone_Vertebra_T8, Bone_Vertebra_T7, Bone_Vertebra_T6, Bone_Vertebra_T5, Bone_Vertebra_T4, Bone_Vertebra_T3, Bone_Vertebra_T2, Bone_Vertebra_T1, Bone_Vertebra_C7, Bone_Vertebra_C6, Bone_Vertebra_C5, Bone_Vertebra_C4, Bone_Vertebra_C3, Bone_Vertebra_C2, Bone_Vertebra_C1 | toàn thân: nội tạng, đốt sống, tim mạch, cơ–xương | ≈ 4 |
+| **Triệu chứng** | SpinalCord, Esophagus, Trachea, Heart, Lung_L, Lung_R, Lungs, Kidney_L, Kidney_R, Liver, Stomach, Bowel_Small, Colon, Bone_Vertebra_S1, Bone_Vertebra_L5, Bone_Vertebra_L4, Bone_Vertebra_L3, Bone_Vertebra_L2, Bone_Vertebra_L1, Bone_Vertebra_T12, Bone_Vertebra_T11, Bone_Vertebra_T10, Bone_Vertebra_T9, Bone_Vertebra_T8, Bone_Vertebra_T7, Bone_Vertebra_T6, Bone_Vertebra_T5, Bone_Vertebra_T4, Bone_Vertebra_T3, Bone_Vertebra_T2, Bone_Vertebra_T1, Bone_Vertebra_C7, Bone_Vertebra_C6, Bone_Vertebra_C5, Bone_Vertebra_C4, Bone_Vertebra_C3, Bone_Vertebra_C2, Bone_Vertebra_C1 | toàn thân: nội tạng, đốt sống, tim mạch, cơ–xương | ≈ 4 |
 
 *Ghi chú:* Các đốt sống giúp định vị; cơ quan ngoài trường chụp tự bỏ qua.
 

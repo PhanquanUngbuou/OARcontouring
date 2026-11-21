@@ -1,7 +1,7 @@
 """Danh mục ĐẦY ĐỦ các cấu trúc có thể khoanh bằng các model MIỄN PHÍ của TotalSegmentator (CT).
 
 - Tên hiển thị theo TG-263 khi có quy ước rõ ràng; các cấu trúc khác đặt tên tự động từ nhãn
-  TotalSegmentator (ví dụ gluteus_maximus_left -> Gluteus_Maximus_L).
+  model; cấu trúc chưa có tên TG-263 đặt theo quy ước QuanContour (docs/QUY_UOC_TEN.md).
 - Mỗi model có "chi phí" tương đối để app ước lượng thời gian khi bác sĩ chọn thêm cơ quan.
 """
 
@@ -27,11 +27,15 @@ TASKS: dict[str, dict] = {
 # Thứ tự giải phẫu để hiển thị danh sách OAR (từ đầu xuống chân); cấu trúc khác xếp sau theo ABC
 ANATOMY_ORDER: list[tuple[str, list[str]]] = [
     ("Thần kinh – mắt", ["Brain", "SpinalCord", "Eye_L", "Eye_R", "Lens_L", "Lens_R", "OpticNrv_L", "OpticNrv_R"]),
-    ("Đầu cổ", ["Parotid_L", "Parotid_R", "Glnd_Submand_L", "Glnd_Submand_R", "Bone_Mandible", "Tongue",
+    ("Đầu cổ", ["Parotid_L", "Parotid_R", "Parotid_L_Ref", "Parotid_R_Ref", "Glnd_Submand_L", "Glnd_Submand_R", "Bone_Mandible", "Tongue",
                 "Musc_Constrict_S", "Musc_Constrict_M", "Musc_Constrict_I", "Larynx_Air", "Cartilage_Thyroid",
                 "Cartilage_Cricoid", "Glnd_Thyroid"]),
+    ("Cơ – mạch vùng cổ", ["Musc_Masseter_L", "Musc_Masseter_R", "Musc_Pterygoid_Med_L", "Musc_Pterygoid_Med_R",
+                           "Musc_Pterygoid_Lat_L", "Musc_Pterygoid_Lat_R", "Musc_Digastric_L", "Musc_Digastric_R",
+                           "Bone_Styloid_L", "Bone_Styloid_R", "A_Carotid_Int_L", "A_Carotid_Int_R",
+                           "V_Jugular_Int_L", "V_Jugular_Int_R", "Canal_Auditory_Ext_L", "Canal_Auditory_Ext_R"]),
     ("Lồng ngực", ["Trachea", "Esophagus", "Lung_L", "Lung_R", "Lungs", "Heart", "V_Venacava_S",
-                   "Breast_L", "Breast_R", "Humerus_L", "Humerus_R", "Sternum", "Ribs", "Ribs_L", "Ribs_R"]),
+                   "Breast_L", "Breast_R", "Humerus_L", "Humerus_R", "Sternum", "Bone_Ribs", "Bone_Ribs_L", "Bone_Ribs_R"]),
     ("Bụng", ["Liver", "Gallbladder", "Stomach", "Duodenum", "Pancreas", "Spleen", "Kidney_L", "Kidney_R",
               "Kidneys", "Bowel_Small", "Colon"]),
     ("Mạch máu (mốc vẽ hạch)", ["A_Aorta", "V_Venacava_I", "A_Iliac_L", "A_Iliac_R", "V_Iliac_L", "V_Iliac_R"]),
@@ -63,7 +67,7 @@ _TG263 = {
     "humerus_left": "Humerus_L", "humerus_right": "Humerus_R", "scapula_left": "Scapula_L",
     "scapula_right": "Scapula_R", "clavicula_left": "Clavicle_L", "clavicula_right": "Clavicle_R",
     "femur_left": "Femur_L", "femur_right": "Femur_R", "hip_left": "Bone_Hip_L", "hip_right": "Bone_Hip_R",
-    "spinal_cord": "SpinalCord", "brain": "Brain", "skull": "Skull", "sternum": "Sternum",
+    "spinal_cord": "SpinalCord", "brain": "Brain", "skull": "Bone_Skull", "sternum": "Sternum",
     "costal_cartilages": "Cartilage_Costal",
     "parotid_gland_left": "Parotid_L", "parotid_gland_right": "Parotid_R",
     "submandibular_gland_left": "Glnd_Submand_L", "submandibular_gland_right": "Glnd_Submand_R",
@@ -84,6 +88,57 @@ _TG263 = {
     "tongue": "Tongue", "nasopharynx": "Nasopharynx", "oropharynx": "Oropharynx",
     "hypopharynx": "Hypopharynx", "pericardium": "Pericardium",
 }
+
+# Quy ước QuanContour cho cấu trúc CHƯA có tên TG-263 (xem docs/QUY_UOC_TEN.md):
+#   <Loại mô>_<Tên giải phẫu>[_Phân loại]_<L|R>   Loại mô: Bone, Musc, A, V, Glnd, Cartilage, Cavity, Canal...
+_QC = {
+    "atrial_appendage_left": "Atrium_Appendage_L",
+    "gluteus_maximus_left": "Musc_Gluteus_Max_L", "gluteus_maximus_right": "Musc_Gluteus_Max_R",
+    "gluteus_medius_left": "Musc_Gluteus_Med_L", "gluteus_medius_right": "Musc_Gluteus_Med_R",
+    "gluteus_minimus_left": "Musc_Gluteus_Min_L", "gluteus_minimus_right": "Musc_Gluteus_Min_R",
+    "autochthon_left": "Musc_Paraspinal_L", "autochthon_right": "Musc_Paraspinal_R",
+    "iliopsoas_left": "Musc_Iliopsoas_L", "iliopsoas_right": "Musc_Iliopsoas_R",
+    "nasal_cavity_left": "Cavity_Nasal_L", "nasal_cavity_right": "Cavity_Nasal_R",
+    "auditory_canal_left": "Canal_Auditory_Ext_L", "auditory_canal_right": "Canal_Auditory_Ext_R",
+    "soft_palate": "Palate_Soft", "hard_palate": "Palate_Hard", "teeth_lower": "Teeth_Lower",
+    "teeth_upper": "Teeth_Upper", "head": "Head", "sinus_maxillary": "Sinus_Maxillary",
+    "sinus_frontal": "Sinus_Frontal", "larynx_air": "Cavity_Larynx",
+    "zygomatic_arch_left": "Bone_Zygoma_L", "zygomatic_arch_right": "Bone_Zygoma_R",
+    "styloid_process_left": "Bone_Styloid_L", "styloid_process_right": "Bone_Styloid_R",
+    "digastric_left": "Musc_Digastric_L", "digastric_right": "Musc_Digastric_R",
+    "trapezius_left": "Musc_Trapezius_L", "trapezius_right": "Musc_Trapezius_R",
+    "platysma_left": "Musc_Platysma_L", "platysma_right": "Musc_Platysma_R",
+    "levator_scapulae_left": "Musc_LevatorScap_L", "levator_scapulae_right": "Musc_LevatorScap_R",
+    "anterior_scalene_left": "Musc_Scalene_Ant_L", "anterior_scalene_right": "Musc_Scalene_Ant_R",
+    "middle_scalene_left": "Musc_Scalene_Mid_L", "middle_scalene_right": "Musc_Scalene_Mid_R",
+    "posterior_scalene_left": "Musc_Scalene_Post_L", "posterior_scalene_right": "Musc_Scalene_Post_R",
+    "sterno_thyroid_left": "Musc_Sternothyroid_L", "sterno_thyroid_right": "Musc_Sternothyroid_R",
+    "thyrohyoid_left": "Musc_Thyrohyoid_L", "thyrohyoid_right": "Musc_Thyrohyoid_R",
+    "prevertebral_left": "Musc_Prevertebral_L", "prevertebral_right": "Musc_Prevertebral_R",
+    "pectoralis_major_left": "Musc_Pectoralis_Maj_L", "pectoralis_major_right": "Musc_Pectoralis_Maj_R",
+    "rectus_abdominis_left": "Musc_RectusAbd_L", "rectus_abdominis_right": "Musc_RectusAbd_R",
+    "serratus_anterior_left": "Musc_Serratus_Ant_L", "serratus_anterior_right": "Musc_Serratus_Ant_R",
+    "latissimus_dorsi_left": "Musc_Latissimus_L", "latissimus_dorsi_right": "Musc_Latissimus_R",
+    "external_oblique_left": "Musc_Oblique_Ext_L", "external_oblique_right": "Musc_Oblique_Ext_R",
+    "internal_oblique_left": "Musc_Oblique_Int_L", "internal_oblique_right": "Musc_Oblique_Int_R",
+    "erector_spinae_left": "Musc_ErectorSpinae_L", "erector_spinae_right": "Musc_ErectorSpinae_R",
+    "transversospinalis_left": "Musc_Transversospinal_L", "transversospinalis_right": "Musc_Transversospinal_R",
+    "psoas_major_left": "Musc_Psoas_L", "psoas_major_right": "Musc_Psoas_R",
+    "quadratus_lumborum_left": "Musc_QuadLumb_L", "quadratus_lumborum_right": "Musc_QuadLumb_R",
+    "abdominal_cavity": "Cavity_Abdominal", "thoracic_cavity": "Cavity_Thoracic", "mediastinum": "Mediastinum",
+    "tongue": "Tongue",
+}
+for _i in range(1, 13):
+    _QC[f"rib_left_{_i}"] = f"Bone_Rib_L{_i}"
+    _QC[f"rib_right_{_i}"] = f"Bone_Rib_R{_i}"
+for _i in range(1, 9):
+    _QC[f"liver_segment_{_i}"] = f"Liver_Seg{_i}"
+for _v in ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10",
+           "T11", "T12", "L1", "L2", "L3", "L4", "L5", "S1"]:
+    _QC[f"vertebrae_{_v}"] = f"Bone_Vertebra_{_v}"
+# nhãn trùng với model khác -> bỏ, dùng bản của model chính
+_SKIP = {("craniofacial_structures", "skull"), ("abdominal_muscles", "trapezius_left"),
+         ("abdominal_muscles", "trapezius_right")}
 
 _GROUP_RULES = [
     ("Hô hấp", ("lung", "trachea", "larynx_air")),
@@ -147,9 +202,9 @@ def _build() -> dict[str, Structure]:
            (255, 150, 60)), "Tiết niệu – sinh dục")
     ribs_l = [f"rib_left_{i}" for i in range(1, 13)]
     ribs_r = [f"rib_right_{i}" for i in range(1, 13)]
-    add(_s("Ribs_L", "total", ribs_l, (220, 220, 190)), "Xương")
-    add(_s("Ribs_R", "total", ribs_r, (200, 200, 170)), "Xương")
-    add(_s("Ribs", "total", ribs_l + ribs_r, (210, 210, 180)), "Xương")
+    add(_s("Bone_Ribs_L", "total", ribs_l, (220, 220, 190)), "Xương")
+    add(_s("Bone_Ribs_R", "total", ribs_r, (200, 200, 170)), "Xương")
+    add(_s("Bone_Ribs", "total", ribs_l + ribs_r, (210, 210, 180)), "Xương")
 
     palette = [(255, 99, 71), (60, 179, 113), (65, 105, 225), (238, 130, 238), (255, 215, 0),
                (0, 206, 209), (255, 140, 0), (154, 205, 50), (186, 85, 211), (100, 149, 237)]
@@ -158,14 +213,12 @@ def _build() -> dict[str, Structure]:
         for label in _labels_of(task):
             if (task == "total" and label.startswith("kidney_cyst")) or (task == "breasts"):
                 continue  # đã gộp vào Kidney_L/R, Breast_L/R
-            name = _TG263.get(label) or _auto_name(label)
-            if task in ("head_muscles", "headneck_muscles", "abdominal_muscles") and label not in _TG263:
+            if (task, label) in _SKIP:
+                continue
+            name = _TG263.get(label) or _QC.get(label) or _auto_name(label)
+            if task in ("head_muscles", "headneck_muscles", "abdominal_muscles") and not name.startswith("Musc_") \
+                    and label not in _TG263 and label not in _QC:
                 name = "Musc_" + name
-            if label in ("gluteus_maximus_left", "gluteus_maximus_right", "gluteus_medius_left",
-                         "gluteus_medius_right", "gluteus_minimus_left", "gluteus_minimus_right"):
-                name = _auto_name(label)
-            if label.startswith("autochthon"):
-                name = "Musc_" + _auto_name(label)
             if name in cat and cat[name].task == task and cat[name].labels == (label,):
                 continue  # đã có trong CURATED
             if name in cat and cat[name].task != task:

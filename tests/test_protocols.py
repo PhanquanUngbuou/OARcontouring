@@ -29,7 +29,7 @@ def test_minimal_models_rules():
                 assert p.id in ("lung_sbrt", "liver_sbrt"), p.id
             if "vertebrae" in parts:
                 assert p.id == "spine_sbrt", p.id
-    assert len([n for n in default_names("spine_sbrt", "curative") if n.startswith("Vertebrae_")]) >= 20
+    assert len([n for n in default_names("spine_sbrt", "curative") if n.startswith("Bone_Vertebra_")]) >= 20
     assert {"Breast_L", "Breast_R"} <= set(default_names("breast", "curative"))
     assert not {"Breast_L", "Breast_R"} & set(default_names("thorax", "curative"))  # vú tách riêng
 
@@ -57,3 +57,26 @@ def test_protocol_run_uses_fixed_list_and_skips_total_when_not_needed(ct_dir, tm
 def test_head_neck_curative_include_optic_and_lens():
     assert {"Lens_L", "Lens_R", "OpticNrv_L", "OpticNrv_R"} <= set(default_names("headneck", "curative"))
     assert {"brain_srs", "lung_sbrt", "liver_sbrt", "spine_sbrt"} <= set(PROTOCOL_BY_ID)
+
+
+def test_parotid_refine_adds_landmarks_and_refined_structure(ct_dir, tmp_path):
+    import numpy as np
+    from conftest import NX, NY, NZ
+    from oar_contour.parotid_refine import LANDMARK_NAMES
+
+    # phantom: "tuyến mang tai" model vẽ thiếu (lõi nhỏ) trong vùng mô mềm lớn hơn, xương hàm chặn một phía
+    t = np.zeros((NZ, NY, NX), np.int16)
+    t[:, 40:43, 31:33] = 79
+    t[0:4, 5:15, 10:30] = 90  # não: để app biết đây là vùng đầu (chạy các model đầu cổ)
+    hg = np.zeros_like(t)
+    hg[8:12, 20:26, 44:50] = 7  # parotid_gland_left (lõi)
+    cf = np.zeros_like(t)
+    cf[4:16, 20:30, 40:42] = 1  # mandible
+    seg = FakeSegmenter({"total": t, "head_glands_cavities": hg, "craniofacial_structures": cf})
+    from oar_contour.ts_labels import KNOWN_LABELS
+    report = run_pipeline(ct_dir, tmp_path / "p.dcm", seg, names=["Parotid_L", "SpinalCord"], refine_parotid=True)
+    assert "Parotid_L_Ref" in report.written
+    assert report.written["Parotid_L_Ref"] > report.written["Parotid_L"]
+    assert "Bone_Mandible" in report.written  # mốc được xuất ra
+    assert {"head_muscles", "headneck_bones_vessels", "craniofacial_structures"} <= set(seg.calls)
+    assert all(n in __import__("oar_contour.catalog", fromlist=["x"]).catalog() for n in LANDMARK_NAMES)

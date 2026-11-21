@@ -7,7 +7,7 @@ Nguyên tắc chọn để chạy ít model nhất:
 - Chỉ đưa vào OAR có ràng buộc liều thường dùng cho vị trí đó (triệu chứng: ít hơn, chỉ OAR giới hạn liều).
 - Không thêm cấu trúc kéo theo model/phần model mới nếu không cần (mạch máu, xương sườn, đốt sống, cơ).
 
-Tên trong danh sách là tên trong danh mục (catalog.py). "Vertebrae_*" = mọi đốt sống.
+Tên trong danh sách là tên trong danh mục (catalog.py). "Bone_Vertebra_*" = mọi đốt sống.
 """
 
 from __future__ import annotations
@@ -81,20 +81,20 @@ PROTOCOLS: list[Protocol] = [
     _p("brain_srs", "SBRT / SRT", "U não SRT / SRS",
        ["Brain", *_EYES], ["Brain", *_EYES], region="headneck"),
     _p("lung_sbrt", "SBRT / SRT", "Phổi SBRT",
-       [*_LUNGS, "Heart", "Esophagus", "SpinalCord", "Trachea", "A_Aorta", "V_Venacava_S", "Ribs", "Sternum"],
-       [*_LUNGS, "Heart", "Esophagus", "SpinalCord", "Trachea", "A_Aorta", "V_Venacava_S", "Ribs", "Sternum"],
-       note="Ribs/Sternum dùng tham khảo cho thành ngực.", region="thorax"),
+       [*_LUNGS, "Heart", "Esophagus", "SpinalCord", "Trachea", "A_Aorta", "V_Venacava_S", "Bone_Ribs", "Sternum"],
+       [*_LUNGS, "Heart", "Esophagus", "SpinalCord", "Trachea", "A_Aorta", "V_Venacava_S", "Bone_Ribs", "Sternum"],
+       note="Bone_Ribs/Sternum dùng tham khảo cho thành ngực.", region="thorax"),
     _p("liver_sbrt", "SBRT / SRT", "Gan SBRT",
        ["Liver", "Gallbladder", "Stomach", "Duodenum", "Bowel_Small", "Colon", *_KIDNEYS, "SpinalCord", "Heart",
-        "Esophagus", "Lung_L", "Lung_R", "Ribs"],
+        "Esophagus", "Lung_L", "Lung_R", "Bone_Ribs"],
        ["Liver", "Gallbladder", "Stomach", "Duodenum", "Bowel_Small", "Colon", *_KIDNEYS, "SpinalCord", "Heart",
-        "Esophagus", "Lung_L", "Lung_R", "Ribs"],
-       note="Liver nên trừ GTV trong Monaco (Liver-GTV). Ribs dùng tham khảo cho thành ngực.", region="abdomen"),
+        "Esophagus", "Lung_L", "Lung_R", "Bone_Ribs"],
+       note="Liver nên trừ GTV trong Monaco (Liver-GTV). Bone_Ribs dùng tham khảo cho thành ngực.", region="abdomen"),
     _p("spine_sbrt", "SBRT / SRT", "Cột sống SBRT",
        ["SpinalCord", "Esophagus", "Trachea", "Heart", *_LUNGS, *_KIDNEYS, "Liver", "Stomach", "Bowel_Small",
-        "Colon", "Vertebrae_*"],
+        "Colon", "Bone_Vertebra_*"],
        ["SpinalCord", "Esophagus", "Trachea", "Heart", *_LUNGS, *_KIDNEYS, "Liver", "Stomach", "Bowel_Small",
-        "Colon", "Vertebrae_*"],
+        "Colon", "Bone_Vertebra_*"],
        note="Các đốt sống giúp định vị; cơ quan ngoài trường chụp tự bỏ qua.", region="thorax"),
 ]
 
@@ -103,7 +103,7 @@ INTENTS = {"curative": "Triệt căn", "palliative": "Triệu chứng"}
 
 
 def expand(names) -> list[str]:
-    """Đổi "Vertebrae_*" thành danh sách đốt sống trong danh mục; bỏ trùng, giữ thứ tự."""
+    """Đổi "Bone_Vertebra_*" thành danh sách đốt sống trong danh mục; bỏ trùng, giữ thứ tự."""
     from .catalog import catalog
 
     cat = catalog()

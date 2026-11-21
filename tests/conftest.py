@@ -127,7 +127,9 @@ class FakeSegmenter:
         if arr is None:
             arr = np.zeros(self._full.GetSize()[::-1], np.int16)
         arr = arr[z0:z0 + image.GetSize()[2]]
-        base = TOTAL_MAP if task == "total" else BREAST_MAP if task == "breasts" else {}
+        base = TOTAL_MAP if task == "total" else BREAST_MAP if task == "breasts" else \
+            {7: "parotid_gland_left"} if task == "head_glands_cavities" else \
+            {1: "mandible"} if task == "craniofacial_structures" else {}
         return arr.copy(), _complete(base, task)
 
 
