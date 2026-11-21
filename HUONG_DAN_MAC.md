@@ -58,6 +58,21 @@ Từ giờ **không cần Terminal nữa**.
 - **Chạy ảnh mẫu**: thử app với ảnh CT công khai, không cần dữ liệu bệnh nhân.
 - Mọi ca được lưu trong thư mục `~/OAR_ketqua` và hiện ở mục "Các ca đã chạy" để mở lại.
 
+## Sửa contour ngay trong app (và lưu làm dữ liệu huấn luyện)
+
+1. Mở một ca đã khoanh xong. Bấm **tên cấu trúc** ở cột phải để chọn cấu trúc cần sửa.
+2. Thanh công cụ dưới ảnh: **Xem** (kéo để di chuyển) · **✎ Vẽ thêm** · **⌫ Tẩy** · **Cỡ bút** (mm).
+   - Vẽ thêm một **vòng kín** thì phần bên trong tự được tô kín.
+   - Sửa được trên Axial, Coronal, Sagittal. **↶ Hoàn tác** (Ctrl/⌘+Z).
+   - Phím tắt: V (xem), B (vẽ), E (tẩy), [ và ] (đổi cỡ bút).
+3. Cơ quan app chưa vẽ được (Brainstem, OpticChiasm…): bấm **+ Thêm cấu trúc**, đặt tên không dấu, rồi vẽ.
+4. Sửa xong bấm **Lưu bản đã duyệt**:
+   - **Tải RTSTRUCT (bản đã duyệt)** để đưa vào Monaco (vẫn tải được bản tự động gốc nếu cần);
+   - ca được lưu vào **kho dữ liệu huấn luyện** trên máy này, kèm bảng mỗi cơ quan khớp bao nhiêu % với bản tự động;
+   - màn hình "Ca mới" có thẻ **Kho dữ liệu huấn luyện**: số ca đã duyệt, cơ quan nào phải sửa nhiều nhất.
+
+Khi kho đủ khoảng 50–100 ca mỗi vùng, các ca này dùng để huấn luyện model của khoa.
+
 ## 4. (Tuỳ chọn) Chạy bằng dòng lệnh
 
 1. Từ Monaco hoặc PACS, export **1 series CT mô phỏng** (DICOM) vào một thư mục, ví dụ

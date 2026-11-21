@@ -118,6 +118,19 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: v
 .slider input { flex: 1; }
 .hint { padding: 0 12px 8px; color: #7d8898; font-size: 11.5px; }
 .zoom { display: flex; gap: 4px; align-items: center; }
+.edittools { display: flex; gap: 6px; padding: 6px 8px; align-items: center; flex-wrap: wrap; border-top: 1px solid #222a33; color: #cfd6e0; font-size: 12px; }
+.edittools button { background: transparent; color: #cfd6e0; border-color: #343b46; padding: 4px 10px; }
+.edittools button.on { background: #2b3644; color: #fff; border-color: #4c9cff; }
+.edittools button.save { background: #1f6f4a; border-color: #2f9e6a; color: #fff; font-weight: 600; }
+.edittools .sp { flex: 1; }
+.edittools input[type=range] { width: 90px; }
+.edittools .active { padding: 2px 8px; border-radius: 6px; background: #1b2028; }
+.dirty { color: #ffb84d; }
+.canvas.brush { cursor: crosshair; }
+.srow.act { outline: 2px solid var(--accent); background: var(--accent-soft); }
+.stats { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+.stats td, .stats th { padding: 3px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+.stats .bad { color: var(--err); font-weight: 600; } .stats .ok { color: var(--ok); }
 .zoom span { min-width: 44px; text-align: center; }
 
 #right { overflow: auto; min-height: 0; }
@@ -245,9 +258,14 @@ footer.lic button { font-size: 11px; padding: 0; border: none; background: none;
       <div class="actions" id="caseActions" hidden>
         <button class="primary" id="dl">Tải RTSTRUCT (.dcm)</button>
         <button id="reveal">Mở thư mục kết quả</button>
+        <button class="ghost small" id="dlOrig" hidden>Tải bản tự động (chưa sửa)</button>
       </div>
     </div>
 
+    <div class="card" id="dsCard" hidden>
+      <h2>Kho dữ liệu huấn luyện</h2>
+      <div class="small" id="dsBody"></div>
+    </div>
     <div class="card">
       <h2>Ca gần đây</h2>
       <ul class="jobs" id="jobs"><li class="muted">Chưa có ca nào</li></ul>
@@ -264,6 +282,17 @@ footer.lic button { font-size: 11px; padding: 0; border: none; background: none;
       <button data-w="soft" class="on">Phần mềm</button>
       <button data-w="lung">Phổi</button>
       <button data-w="bone">Xương</button>
+    </div>
+    <div class="edittools" id="edittools" hidden>
+      <button data-tool="view" class="on" title="Xem, kéo để di chuyển (V)">Xem</button>
+      <button data-tool="add" title="Vẽ thêm; vẽ vòng kín thì tô kín bên trong (B)">✎ Vẽ thêm</button>
+      <button data-tool="erase" title="Tẩy (E)">⌫ Tẩy</button>
+      <span>Cỡ bút</span><input type="range" id="brush" min="1" max="20" value="3"><span id="brushV">3 mm</span>
+      <span>Đang sửa:</span><span class="active" id="activeName">–</span>
+      <button id="undoBtn" title="Hoàn tác (Ctrl/⌘+Z)">↶ Hoàn tác</button>
+      <span class="sp"></span>
+      <span class="dirty" id="dirtyTag" hidden>● Chưa lưu</span>
+      <button class="save" id="approveBtn" title="Lưu RTSTRUCT đã sửa và đưa vào kho dữ liệu huấn luyện">Lưu bản đã duyệt</button>
     </div>
     <div class="canvas" id="canvas">
       <div class="placeholder" id="ph">
@@ -287,7 +316,9 @@ footer.lic button { font-size: 11px; padding: 0; border: none; background: none;
   <aside id="right">
     <div class="card">
       <h2>Cấu trúc</h2>
+      <div class="muted small" style="margin-bottom:6px">Bấm vào tên để chọn cấu trúc cần sửa</div>
       <div class="slist" id="list"></div>
+      <button class="ghost small" id="newStruct">+ Thêm cấu trúc (bác sĩ tự vẽ)</button>
       <div id="extra"></div>
     </div>
   </aside>
@@ -523,7 +554,10 @@ $("demo").onclick = async () => {
     select(job.id);
   } catch (e) { alert("Lỗi: " + e.message); }
 };
-$("newCase").onclick = () => setMode("setup");
+$("newCase").onclick = () => {
+  if (dirtyNow && !confirm("Ca đang sửa chưa lưu bản duyệt. Vẫn quay lại tạo ca mới?")) return;
+  setMode("setup");
+};
 $("quit").onclick = async () => {
   if (!confirm("Tắt QuanContour?")) return;
   await api("/api/quit", { method: "POST" }).catch(() => {});
@@ -539,9 +573,9 @@ function setMode(mode) {
   $("casePanel").hidden = mode !== "case";
   if (mode === "setup") {
     current = null; vol = null; clearInterval(poll);
-    $("stage").hidden = true; $("toolbar").hidden = true; $("vfoot").hidden = true;
-    $("phRun").hidden = true; $("ph").hidden = false;
-    refreshJobs();
+    $("stage").hidden = true; $("toolbar").hidden = true; $("vfoot").hidden = true; $("edittools").hidden = true;
+    $("phRun").hidden = true; $("ph").hidden = false; setDirty(false); setTool("view");
+    refreshJobs(); loadDataset();
   }
   setTimeout(applyZoom, 300);
 }
@@ -556,7 +590,7 @@ async function refreshJobs() {
     if (j.id === current) li.className = "sel";
     const when = j.id.slice(0, 13).replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, "$3/$2 $4:$5");
     const name = j.label || (j.result.sites || [j.site]).map((s) => labelSite[s] || s).join(", ");
-    const st = j.status === "running" ? `${j.percent}%` : labelStatus[j.status] || j.status;
+    const st = j.status === "running" ? `${j.percent}%` : j.approved ? "đã duyệt" : labelStatus[j.status] || j.status;
     li.innerHTML = `<span>${esc(when)} · ${esc((j.demo ? "Ảnh mẫu · " : "") + name)}</span><span class="st-${j.status}">${esc(st)}</span>`;
     li.onclick = () => select(j.id);
     $("jobs").appendChild(li);
@@ -572,12 +606,13 @@ function setProgress(pct, stepText, etaText) {
   $("ceta").textContent = etaText; $("beta").textContent = etaText;
 }
 async function select(id) {
+  if (dirtyNow && id !== current && !confirm("Ca đang sửa chưa lưu bản duyệt. Vẫn chuyển sang ca khác? (chỉnh sửa vẫn được giữ tạm, mở lại ca đó để lưu)")) return;
   current = id; vol = null; view.hidden.clear(); lastCont = {};
   clearInterval(poll);
   setMode("case");
   current = id;
-  $("stage").hidden = true; $("toolbar").hidden = true; $("vfoot").hidden = true;
-  $("ph").hidden = true; $("phRun").hidden = false;
+  $("stage").hidden = true; $("toolbar").hidden = true; $("vfoot").hidden = true; $("edittools").hidden = true;
+  $("ph").hidden = true; $("phRun").hidden = false; setDirty(false); setTool("view"); active = null;
   $("caseRun").hidden = false; $("caseErr").hidden = true; $("caseActions").hidden = true;
   $("list").innerHTML = ""; $("extra").innerHTML = "";
   const tick = async () => {
@@ -617,15 +652,41 @@ async function showResult(j) {
   vol = await api(`/api/jobs/${j.id}/volume`);
   const r = j.result;
   $("caseRun").hidden = true; $("caseActions").hidden = false;
-  $("caseMeta").textContent += ` · ${r.structures.length} cấu trúc${j.elapsed ? " · " + fmtTime(j.elapsed) : ""}`;
+  const meta = [];
+  if (j.n_files) meta.push(`${j.n_files} lát CT`);
+  if (j.device_used) meta.push(labelDevice[j.device_used] || j.device_used);
+  if (j.fast) meta.push("chế độ nhanh");
+  meta.push(`${r.structures.length} cấu trúc`);
+  if (j.elapsed) meta.push(fmtTime(j.elapsed));
+  $("caseMeta").textContent = meta.join(" · ");
   const cc = Object.fromEntries(r.structures.map((s) => [s.name, s.cc]));
+  curJob = j; renderStructList(cc);
+  let extra = "";
+  const notes = Object.entries(r.notes || {});
+  if (notes.length) extra += `<div class="muted small" style="margin-top:10px">${notes.map(([n, t]) => `<b>${esc(n)}</b>: ${esc(t)}`).join("<br>")}</div>`;
+  $("extra").innerHTML = extra;
+  if (j.approved) $("extra").innerHTML = '<div class="muted small" style="margin-top:10px">✓ Ca này đã có bản bác sĩ duyệt (đang hiển thị bản đã duyệt).</div>' + extra;
+  $("edittools").hidden = false; setDirty(j.dirty); updateDl(j.approved);
+  for (const a of ["axial", "coronal", "sagittal"]) view.idx[a] = Math.floor(vol.sizes[a] / 2);
+  const first0 = r.structures[0] && vol.centers[r.structures[0].name];
+  if (first0) view.idx = { ...first0 };
+  $("phRun").hidden = true; $("ph").hidden = true;
+  $("stage").hidden = false; $("toolbar").hidden = false; $("vfoot").hidden = false;
+  zoom.fitted = true; setTimeout(() => { applyZoom(); syncSlider(); draw(); }, 280);
+}
+let curJob = null, ccCache = {};
+function renderStructList(cc) {
+  if (cc) ccCache = cc;
+  const names = Object.keys(vol.colors);
+  if (!active || !vol.colors[active]) active = names[0] || null;
+  $("activeName").textContent = active || "–";
   let html = "";
-  for (const sec of anatSections(r.structures.map((s) => s.name))) {
+  for (const sec of anatSections(names)) {
     html += `<div class="sec"><div class="t">${esc(sec.title)}</div>`;
     for (const n of sec.names) {
       const c = vol.colors[n] || [200, 200, 200];
-      html += `<label class="srow"><input type="checkbox" checked data-s="${esc(n)}"><span class="sw" style="background:rgb(${c.join(",")})"></span>` +
-        `<span class="n" data-go="${esc(n)}" title="Bấm để đi tới cơ quan">${esc(n)}</span><span class="cc">${cc[n]} cc</span></label>`;
+      html += `<label class="srow${n === active ? " act" : ""}"><input type="checkbox" ${view.hidden.has(n) ? "" : "checked"} data-s="${esc(n)}"><span class="sw" style="background:rgb(${c.join(",")})"></span>` +
+        `<span class="n" data-go="${esc(n)}" title="Bấm để chọn sửa và đi tới cơ quan">${esc(n)}</span><span class="cc">${ccCache[n] != null ? ccCache[n] + " cc" : ""}</span></label>`;
     }
     html += "</div>";
   }
@@ -634,18 +695,11 @@ async function showResult(j) {
     cb.checked ? view.hidden.delete(cb.dataset.s) : view.hidden.add(cb.dataset.s); paintContours();
   }));
   $("list").querySelectorAll("[data-go]").forEach((el) => (el.onclick = (e) => {
-    e.preventDefault(); const ctr = vol.centers[el.dataset.go]; if (ctr) { view.idx = { ...ctr }; syncSlider(); draw(); }
+    e.preventDefault();
+    active = el.dataset.go; renderStructList();
+    const ctr = vol.centers[el.dataset.go];
+    if (ctr && !lastCont[el.dataset.go]) { view.idx = { ...ctr }; syncSlider(); draw(); }
   }));
-  let extra = "";
-  const notes = Object.entries(r.notes || {});
-  if (notes.length) extra += `<div class="muted small" style="margin-top:10px">${notes.map(([n, t]) => `<b>${esc(n)}</b>: ${esc(t)}`).join("<br>")}</div>`;
-  $("extra").innerHTML = extra;
-  for (const a of ["axial", "coronal", "sagittal"]) view.idx[a] = Math.floor(vol.sizes[a] / 2);
-  const first = r.structures[0] && vol.centers[r.structures[0].name];
-  if (first) view.idx = { ...first };
-  $("phRun").hidden = true; $("ph").hidden = true;
-  $("stage").hidden = false; $("toolbar").hidden = false; $("vfoot").hidden = false;
-  zoom.fitted = true; setTimeout(() => { applyZoom(); syncSlider(); draw(); }, 280);
 }
 function syncSlider() {
   if (!vol) return;
@@ -701,14 +755,119 @@ cv.addEventListener("gesturechange", (e) => {
   e.preventDefault(); const r = cv.getBoundingClientRect();
   zoomAt((gz * e.scale) / zoom.z, e.clientX - r.left, e.clientY - r.top);
 });
-let drag = null;
-cv.addEventListener("pointerdown", (e) => { if (!vol) return; drag = { x: e.clientX, y: e.clientY, ox: zoom.x, oy: zoom.y }; cv.setPointerCapture(e.pointerId); cv.classList.add("grabbing"); });
+// ---------------- sửa contour: xem / vẽ thêm / tẩy
+let drag = null, stroke = null, tool = "view", active = null, brushMm = 3;
+function imgPt(e) {
+  const r = $("stage").getBoundingClientRect(), g = vol.geom[view.axis];
+  return [((e.clientX - r.left) / r.width) * g.w, ((e.clientY - r.top) / r.height) * g.h];
+}
+function brushPx() { const g = vol.geom[view.axis]; return [brushMm / g.px_w, brushMm / g.px_h]; }
+function drawLive(cursor) {
+  // nét bút đang vẽ + vòng tròn cỡ bút dưới con trỏ
+  const svg = $("ov");
+  svg.querySelectorAll(".live").forEach((n) => n.remove());
+  if (!vol || tool === "view") return;
+  const [rx, ry] = brushPx();
+  const col = tool === "add" ? (vol.colors[active] || [255, 255, 255]).join(",") : "255,80,80";
+  const ns = "http://www.w3.org/2000/svg";
+  if (stroke && stroke.length) {
+    for (const [x, y] of stroke) {
+      const el = document.createElementNS(ns, "ellipse");
+      el.setAttribute("class", "live"); el.setAttribute("cx", x); el.setAttribute("cy", y);
+      el.setAttribute("rx", rx); el.setAttribute("ry", ry); el.setAttribute("fill", `rgba(${col},0.35)`);
+      svg.appendChild(el);
+    }
+  }
+  if (cursor) {
+    const el = document.createElementNS(ns, "ellipse");
+    el.setAttribute("class", "live"); el.setAttribute("cx", cursor[0]); el.setAttribute("cy", cursor[1]);
+    el.setAttribute("rx", rx); el.setAttribute("ry", ry); el.setAttribute("fill", "none");
+    el.setAttribute("stroke", `rgb(${col})`); el.setAttribute("stroke-width", "1"); el.setAttribute("vector-effect", "non-scaling-stroke");
+    svg.appendChild(el);
+  }
+}
+cv.addEventListener("pointerdown", (e) => {
+  if (!vol) return;
+  cv.setPointerCapture(e.pointerId);
+  if (tool !== "view" && !$("stage").hidden) {
+    if (!active) { alert("Chọn cấu trúc cần sửa ở danh sách bên phải."); return; }
+    stroke = [imgPt(e)]; drawLive(); return;
+  }
+  drag = { x: e.clientX, y: e.clientY, ox: zoom.x, oy: zoom.y }; cv.classList.add("grabbing");
+});
 cv.addEventListener("pointermove", (e) => {
+  if (stroke) {
+    const p = imgPt(e), q = stroke[stroke.length - 1], [rx] = brushPx();
+    if (Math.hypot(p[0] - q[0], p[1] - q[1]) > Math.max(0.5, rx / 3)) stroke.push(p);
+    drawLive(p); return;
+  }
+  if (tool !== "view" && vol && !$("stage").hidden) { drawLive(imgPt(e)); }
   if (!drag) return;
   zoom.x = drag.ox + e.clientX - drag.x; zoom.y = drag.oy + e.clientY - drag.y; zoom.fitted = false; applyZoom();
 });
-const endDrag = () => { drag = null; cv.classList.remove("grabbing"); };
+cv.addEventListener("pointerleave", () => { if (!stroke) drawLive(); });
+async function endStroke() {
+  const pts = stroke; stroke = null;
+  if (!pts || !pts.length || !current) return;
+  try {
+    const r = await api(`/api/jobs/${current}/edit`, { method: "POST", body: JSON.stringify(
+      { name: active, axis: view.axis, i: view.idx[view.axis], op: tool, points: pts, radius_mm: brushMm }) });
+    lastCont = r.contours; paintContours(); setDirty(true);
+  } catch (err) { alert("Lỗi: " + err.message); drawLive(); }
+}
+const endDrag = () => { if (stroke) { endStroke(); return; } drag = null; cv.classList.remove("grabbing"); };
 cv.addEventListener("pointerup", endDrag); cv.addEventListener("pointercancel", endDrag);
+function setTool(t) {
+  tool = t;
+  document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === t));
+  cv.classList.toggle("brush", t !== "view"); drawLive();
+}
+document.querySelectorAll("[data-tool]").forEach((b) => (b.onclick = () => setTool(b.dataset.tool)));
+$("brush").oninput = (e) => { brushMm = +e.target.value; $("brushV").textContent = `${brushMm} mm`; };
+function setDirty(d) { $("dirtyTag").hidden = !d; dirtyNow = !!d; }
+let dirtyNow = false;
+async function undoEdit() {
+  if (!current) return;
+  const r = await api(`/api/jobs/${current}/undo`, { method: "POST", body: "{}" }).catch(() => null);
+  if (r && r.undone) {
+    if (r.undone.axis !== view.axis) {
+      document.querySelectorAll("[data-axis]").forEach((x) => x.classList.toggle("on", x.dataset.axis === r.undone.axis));
+      view.axis = r.undone.axis; fit();
+    }
+    view.idx[view.axis] = r.undone.i; syncSlider(); draw();
+  }
+}
+$("undoBtn").onclick = undoEdit;
+$("newStruct").onclick = async () => {
+  if (!current || !vol) return;
+  const name = prompt("Tên cấu trúc mới (chữ không dấu, ví dụ Brainstem, OpticChiasm, Cochlea_L):");
+  if (!name) return;
+  try {
+    const r = await api(`/api/jobs/${current}/structure`, { method: "POST", body: JSON.stringify({ name: name.trim() }) });
+    vol.colors = r.colors; active = name.trim(); renderStructList(); setDirty(true); setTool("add");
+  } catch (e) { alert("Lỗi: " + e.message); }
+};
+$("approveBtn").onclick = async () => {
+  if (!current) return;
+  $("approveBtn").disabled = true; $("approveBtn").textContent = "Đang lưu…";
+  try {
+    const r = await api(`/api/jobs/${current}/approve`, { method: "POST", body: "{}" });
+    setDirty(false); updateDl(true); refreshJobs();
+    const rows = r.stats.map((st) => `<tr><td>${esc(st.name)}</td><td>${st.new ? "vẽ mới" : `<span class="${st.dice < 0.9 ? "bad" : "ok"}">${Math.round(st.dice * 100)}%</span>`}</td>` +
+      `<td>${st.new ? "" : st.edited ? "đã sửa" : "giữ nguyên"}</td></tr>`).join("");
+    $("extra").innerHTML = `<div class="manual" style="background:var(--accent-soft);color:var(--ink);border-color:transparent"><b>✓ Đã lưu bản duyệt</b>` +
+      `RTSTRUCT đã sửa sẵn sàng đưa vào Monaco và đã được lưu vào kho dữ liệu huấn luyện.</div>` +
+      `<table class="stats"><tr><th>Cấu trúc</th><th>Khớp bản tự động</th><th></th></tr>${rows}</table>`;
+    loadDataset();
+  } catch (e) { alert("Lỗi: " + e.message); }
+  finally { $("approveBtn").disabled = false; $("approveBtn").textContent = "Lưu bản đã duyệt"; }
+};
+function updateDl(approved) {
+  $("dl").textContent = approved ? "Tải RTSTRUCT (bản đã duyệt)" : "Tải RTSTRUCT (.dcm)";
+  $("dlOrig").hidden = !approved;
+}
+$("dlOrig").onclick = () => { if (current) location.href = `/api/jobs/${current}/rtstruct?version=goc`; };
+window.addEventListener("beforeunload", (e) => { if (dirtyNow) { e.preventDefault(); e.returnValue = ""; } });
 cv.addEventListener("dblclick", fit);
 
 // ---------------- vẽ lát cắt: ảnh CT gốc + contour dạng vector
@@ -757,6 +916,14 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "+" || e.key === "=") zoomAt(1.5);
   if (e.key === "-") zoomAt(1 / 1.5);
   if (e.key === "0") fit();
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undoEdit(); return; }
+  if (!$("edittools").hidden) {
+    if (e.key === "v" || e.key === "V") setTool("view");
+    if (e.key === "b" || e.key === "B") setTool("add");
+    if (e.key === "e" || e.key === "E") setTool("erase");
+    if (e.key === "[") { brushMm = Math.max(1, brushMm - 1); $("brush").value = brushMm; $("brushV").textContent = `${brushMm} mm`; drawLive(); }
+    if (e.key === "]") { brushMm = Math.min(20, brushMm + 1); $("brush").value = brushMm; $("brushV").textContent = `${brushMm} mm`; drawLive(); }
+  }
 });
 document.querySelectorAll("[data-axis]").forEach((b) => (b.onclick = () => {
   document.querySelectorAll("[data-axis]").forEach((x) => x.classList.toggle("on", x === b));
@@ -884,6 +1051,18 @@ $("msave").onclick = async () => {
     closeModal(); renderSetup();
   } catch (e) { alert("Lỗi: " + e.message); }
 };
+
+async function loadDataset() {
+  const d = await api("/api/dataset").catch(() => null);
+  if (!d || !d.cases) { $("dsCard").hidden = true; return; }
+  $("dsCard").hidden = false;
+  const worst = d.structures.filter((x) => x.mean_dice != null).slice(0, 4)
+    .map((x) => `${esc(x.name)} (khớp ${Math.round(x.mean_dice * 100)}%, ${x.cases} ca)`).join(", ");
+  const drawn = d.structures.filter((x) => x.new).map((x) => `${esc(x.name)} ×${x.new}`).join(", ");
+  $("dsBody").innerHTML = `<b>${d.cases} ca đã duyệt</b> (lưu trên máy này)` +
+    (worst ? `<div class="muted small" style="margin-top:4px">Phải sửa nhiều nhất: ${worst}</div>` : "") +
+    (drawn ? `<div class="muted small">Bác sĩ vẽ mới: ${drawn}</div>` : "");
+}
 
 // ---------------- khởi động
 api("/api/info").then((i) => {

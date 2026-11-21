@@ -196,3 +196,68 @@ def test_protocol_job_api(ct_dir, tmp_path):
             assert e.code == 400
     finally:
         server.shutdown()
+
+
+def test_edit_contours_approve_and_dataset(ct_dir, tmp_path):
+    from rt_utils import RTStructBuilder
+
+    manager = JobManager(tmp_path / "results", lambda device: FakeSegmenter(thorax_labels()))
+    ref = {}
+    server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(manager, ref))
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    post = lambda path, obj: json.loads(_req(base, path, "POST", json.dumps(obj).encode())[2])
+    try:
+        jid = post("/api/jobs", {"protocol": "custom", "intent": "curative", "names": ["Heart", "Lung_L"]})["id"]
+        for f in ct_dir.iterdir():
+            _req(base, f"/api/jobs/{jid}/files?name={f.name}", "PUT", f.read_bytes())
+        _req(base, f"/api/jobs/{jid}/start", "POST", b"")
+        deadline = time.time() + 60
+        while time.time() < deadline and json.loads(_req(base, f"/api/jobs/{jid}")[2])["status"] != "done":
+            time.sleep(0.2)
+        vol = json.loads(_req(base, f"/api/jobs/{jid}/volume")[2])
+        i = vol["centers"]["Heart"]["axial"]
+        v = manager.jobs[jid].viewer
+        area0 = int(v._plane(v.full_mask("Heart"), "axial", i).sum())
+
+        # vẽ thêm một vòng kín bên cạnh tim -> phần trong được tô kín
+        ring = [[10, 30], [20, 30], [20, 40], [10, 40], [10, 30]]
+        r = post(f"/api/jobs/{jid}/edit", {"name": "Heart", "axis": "axial", "i": i, "op": "add", "points": ring, "radius_mm": 1})
+        area1 = int(v._plane(v.full_mask("Heart"), "axial", i).sum())
+        assert area1 > area0 + 80 and "Heart" in r["contours"]
+        assert json.loads(_req(base, f"/api/jobs/{jid}")[2])["dirty"] is True
+        # tẩy, rồi hoàn tác 2 lần -> về như cũ
+        post(f"/api/jobs/{jid}/edit", {"name": "Heart", "axis": "axial", "i": i, "op": "erase", "points": [[15, 35]], "radius_mm": 6})
+        assert int(v._plane(v.full_mask("Heart"), "axial", i).sum()) < area1
+        post(f"/api/jobs/{jid}/undo", {}); post(f"/api/jobs/{jid}/undo", {})
+        assert int(v._plane(v.full_mask("Heart"), "axial", i).sum()) == area0
+        # sửa trên mặt cắt coronal cũng được
+        post(f"/api/jobs/{jid}/edit", {"name": "Lung_L", "axis": "coronal", "i": 20, "op": "erase", "points": [[46, 12]], "radius_mm": 4})
+
+        # cấu trúc mới (app chưa vẽ được) do bác sĩ vẽ
+        post(f"/api/jobs/{jid}/structure", {"name": "Brainstem"})
+        try:
+            post(f"/api/jobs/{jid}/structure", {"name": "thân não"})
+            raise AssertionError("tên có dấu phải bị từ chối")
+        except urllib.error.HTTPError as e:
+            assert e.code == 400
+        post(f"/api/jobs/{jid}/edit", {"name": "Brainstem", "axis": "axial", "i": i, "op": "add", "points": [[40, 10]], "radius_mm": 4})
+        post(f"/api/jobs/{jid}/edit", {"name": "Heart", "axis": "axial", "i": i, "op": "add", "points": ring, "radius_mm": 1})
+
+        res = post(f"/api/jobs/{jid}/approve", {})
+        stats = {s["name"]: s for s in res["stats"]}
+        assert stats["Heart"]["edited"] and stats["Heart"]["dice"] < 1
+        assert stats["Brainstem"].get("new")
+        assert (manager.jobs[jid].dir / "RS_DUYET.dcm").exists() and manager.jobs[jid].approved
+        rs = RTStructBuilder.create_from(str(manager.jobs[jid].ct_dir), str(manager.jobs[jid].dir / "RS_DUYET.dcm"))
+        assert {"Heart", "Lung_L", "Brainstem"} <= set(rs.get_roi_names())
+        # tải về: mặc định bản duyệt, có thể lấy bản gốc
+        _, _, b1 = _req(base, f"/api/jobs/{jid}/rtstruct")
+        _, _, b2 = _req(base, f"/api/jobs/{jid}/rtstruct?version=goc")
+        assert b1 != b2
+        ds = json.loads(_req(base, "/api/dataset")[2])
+        assert ds["cases"] == 1 and any(r["name"] == "Brainstem" and r["new"] == 1 for r in ds["structures"])
+        # mở lại app: ca vẫn được đánh dấu đã duyệt
+        assert JobManager(tmp_path / "results", None).jobs[jid].approved
+    finally:
+        server.shutdown()

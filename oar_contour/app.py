@@ -57,6 +57,8 @@ class ViewerData:
     spacing: tuple[float, float, float]  # row_mm, col_mm, slice_mm
     masks: dict[str, tuple[tuple[slice, slice, slice], np.ndarray]]  # tên -> (bbox, mask con)
     colors: dict[str, tuple[int, int, int]]
+    undo: list = field(default_factory=list)  # (tên, trục, lát, mặt cắt cũ) để hoàn tác
+    dirty: bool = False  # có chỉnh sửa chưa lưu
 
     @classmethod
     def load(cls, ct_dir: Path, rtstruct: Path) -> "ViewerData":
@@ -169,6 +171,103 @@ class ViewerData:
                 out[name] = polys
         return out
 
+    # ---------------------------------------------------------- chỉnh sửa contour
+    def _full_bbox(self):
+        r, c, n = self.vol.shape
+        return (slice(0, r), slice(0, c), slice(0, n))
+
+    def _full(self, name: str) -> np.ndarray:
+        bbox, sub = self.masks[name]
+        fb = self._full_bbox()
+        if bbox != fb:
+            full = np.zeros(self.vol.shape, bool)
+            full[bbox] = sub
+            self.masks[name] = (fb, full)
+        return self.masks[name][1]
+
+    def add_structure(self, name: str, color: tuple[int, int, int]):
+        self.masks[name] = (self._full_bbox(), np.zeros(self.vol.shape, bool))
+        self.colors[name] = color
+        self.dirty = True
+
+    @staticmethod
+    def _plane(m: np.ndarray, axis: str, i: int) -> np.ndarray:
+        return m[:, :, i] if axis == "axial" else m[i, :, :] if axis == "coronal" else m[:, i, :]
+
+    def _set_plane(self, m: np.ndarray, axis: str, i: int, disp: np.ndarray):
+        plane = disp if axis == "axial" else disp[::-1].T  # ngược lại với _orient
+        if axis == "axial":
+            m[:, :, i] = plane
+        elif axis == "coronal":
+            m[i, :, :] = plane
+        else:
+            m[:, i, :] = plane
+
+    def edit(self, name: str, axis: str, i: int, op: str, points: list, radius_mm: float):
+        """Vẽ thêm (op="add") hoặc xoá (op="erase") theo nét bút trên mặt cắt đang hiển thị.
+
+        points: toạ độ pixel hiển thị (pixel (c, r) chiếm [c, c+1]); bút tròn bán kính radius_mm (theo mm thật).
+        Vẽ thêm một vòng kín thì phần bên trong tự được tô kín."""
+        import cv2
+        from scipy import ndimage
+
+        if name not in self.masks:
+            raise ValueError("Không có cấu trúc này")
+        i = int(np.clip(i, 0, self.shape(axis) - 1))
+        m = self._full(name)
+        disp = self._orient(self._plane(m, axis, i), axis).copy()
+        g = self.geometry()[axis]
+        rx, ry = max(0.6, radius_mm / g["px_w"]), max(0.6, radius_mm / g["px_h"])
+        pts = [(float(x) - 0.5, float(y) - 0.5) for x, y in points] or []
+        dense = []
+        for a, b in zip(pts, pts[1:] + pts[-1:]):
+            d = max(abs(b[0] - a[0]) / rx, abs(b[1] - a[1]) / ry)
+            k = max(1, int(np.ceil(d * 3)))
+            dense += [(a[0] + (b[0] - a[0]) * t / k, a[1] + (b[1] - a[1]) * t / k) for t in range(k)]
+        dense += pts[-1:]
+        canvas = np.zeros(disp.shape, np.uint8)
+        for x, y in dense:
+            cv2.ellipse(canvas, (int(round(x * 16)), int(round(y * 16))), (int(round(rx * 16)), int(round(ry * 16))),
+                        0, 0, 360, 1, -1, lineType=cv2.LINE_8, shift=4)
+        stroke = canvas.astype(bool)
+        new = (disp | stroke) if op == "add" else (disp & ~stroke)
+        if op == "add":
+            new = ndimage.binary_fill_holes(new)
+        self.undo.append((name, axis, i, disp))
+        del self.undo[:-100]
+        self._set_plane(m, axis, i, new)
+        self.dirty = True
+        return i
+
+    def undo_last(self):
+        if not self.undo:
+            return None
+        name, axis, i, disp = self.undo.pop()
+        if name in self.masks:
+            self._set_plane(self._full(name), axis, i, disp)
+        self.dirty = True
+        return {"name": name, "axis": axis, "i": i}
+
+    def full_mask(self, name: str) -> np.ndarray:
+        bbox, sub = self.masks[name]
+        full = np.zeros(self.vol.shape, bool)
+        full[bbox] = sub
+        return full
+
+    def write_rtstruct(self, ct_dir: Path, out_path: Path):
+        from rt_utils import RTStructBuilder
+
+        rt = RTStructBuilder.create_new(dicom_series_path=str(ct_dir))
+        for name in self.masks:
+            full = self.full_mask(name)
+            if full.any():
+                rt.add_roi(mask=full, color=list(self.colors[name]), name=name, description="Approved in QuanContour",
+                           roi_generation_algorithm=2, roi_interpreted_type="ORGAN")
+        rt.set_series_description("OAR approved")
+        rt.ds.StructureSetLabel = "OAR_DUYET"
+        rt.ds.StructureSetName = "OAR_DUYET"
+        rt.save(str(out_path))
+
     def centers(self) -> dict[str, dict[str, int]]:
         """Lát giữa của từng cơ quan theo từng trục, để bấm vào tên là nhảy tới."""
         out = {}
@@ -193,6 +292,7 @@ class Job:
     intent: str = ""  # curative | palliative
     names: list = field(default_factory=list)  # danh sách OAR cố định của ca (theo phác đồ)
     refine_parotid: bool = False  # hiệu chỉnh tuyến mang tai (thử nghiệm)
+    approved: bool = False  # bác sĩ đã sửa & lưu bản duyệt (dữ liệu huấn luyện)
     # tiến trình
     plan: list = field(default_factory=list)  # [(tên bước, trọng số)]
     step: int = 0
@@ -264,7 +364,8 @@ class Job:
         elapsed = (self.finished or time.time()) - self.started if self.started else self.saved_elapsed
         pct, eta = self.progress()
         return {"id": self.id, "status": self.status, "message": self.message, "site": self.site,
-                "percent": pct, "eta": eta,
+                "percent": pct, "eta": eta, "approved": self.approved,
+                "dirty": bool(self.viewer and self.viewer.dirty),
                 "step_label": self.plan[min(self.step, len(self.plan) - 1)][0] if self.plan else "",
                 "fast": self.fast, "demo": self.demo, "elapsed": round(elapsed),
                 "device": self.device, "device_used": self.device_used,
@@ -319,7 +420,8 @@ class JobManager:
                           message="Hoàn tất", result=data.get("result", {}), n_files=data.get("n_files", 0),
                           device=data.get("device", "auto"), device_used=data.get("device_used", ""),
                           saved_elapsed=int(data.get("elapsed", 0)),
-                          protocol=data.get("protocol", ""), intent=data.get("intent", ""))
+                          protocol=data.get("protocol", ""), intent=data.get("intent", ""),
+                          approved=(meta.parent / "RS_DUYET.dcm").exists())
                 if job.rtstruct.exists() and job.ct_dir.exists():
                     self.jobs[job.id] = job
             except Exception:
@@ -551,15 +653,71 @@ class JobManager:
                 proc.kill()
 
     def _drop_viewers(self):
-        """Chỉ giữ ảnh của 1 ca trong RAM."""
+        """Chỉ giữ ảnh của 1 ca trong RAM (trừ ca đang sửa dở chưa lưu)."""
         for j in self.jobs.values():
-            j.viewer = None
+            if j.viewer is not None and not j.viewer.dirty:
+                j.viewer = None
 
     def viewer(self, job: Job) -> ViewerData:
         if job.viewer is None:
             self._drop_viewers()
-            job.viewer = ViewerData.load(job.ct_dir, job.rtstruct)
+            rs = job.dir / "RS_DUYET.dcm"
+            job.viewer = ViewerData.load(job.ct_dir, rs if rs.exists() else job.rtstruct)
         return job.viewer
+
+    def approve(self, job: Job) -> dict:
+        """Lưu bản bác sĩ đã duyệt: RTSTRUCT mới + thống kê so với bản tự động -> kho dữ liệu huấn luyện."""
+        from .evaluate import dice
+
+        v = self.viewer(job)
+        out = job.dir / "RS_DUYET.dcm"
+        v.write_rtstruct(job.ct_dir, out)
+        orig = ViewerData.load(job.ct_dir, job.rtstruct)
+        cc = float(np.prod(v.spacing)) / 1000.0
+        stats = []
+        for name in v.masks:
+            e = v.full_mask(name)
+            if name in orig.masks:
+                o = orig.full_mask(name)
+                d = dice(o, e)
+                stats.append({"name": name, "dice": round(d, 3), "edited": d < 0.999,
+                              "cc_auto": round(float(o.sum()) * cc, 1), "cc_approved": round(float(e.sum()) * cc, 1)})
+            elif e.any():
+                stats.append({"name": name, "dice": None, "edited": True, "new": True, "cc_auto": 0,
+                              "cc_approved": round(float(e.sum()) * cc, 1)})
+        del orig
+        (job.dir / "duyet.json").write_text(json.dumps(
+            {"id": job.id, "label": job.label(), "protocol": job.protocol, "stats": stats,
+             "time": datetime.now().isoformat(timespec="seconds")}, ensure_ascii=False, indent=1), encoding="utf-8")
+        v.dirty = False
+        v.undo.clear()
+        job.approved = True
+        return {"stats": stats}
+
+    def dataset(self) -> dict:
+        """Tổng hợp kho dữ liệu đã duyệt: số ca, mỗi cấu trúc phải sửa bao nhiêu."""
+        per: dict[str, dict] = {}
+        n = 0
+        for f in sorted(self.root.glob("*/duyet.json")):
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            n += 1
+            for st in data.get("stats", []):
+                p = per.setdefault(st["name"], {"name": st["name"], "cases": 0, "edited": 0, "new": 0, "dices": []})
+                p["cases"] += 1
+                p["edited"] += bool(st.get("edited"))
+                p["new"] += bool(st.get("new"))
+                if st.get("dice") is not None:
+                    p["dices"].append(st["dice"])
+        rows = []
+        for p in per.values():
+            d = p.pop("dices")
+            p["mean_dice"] = round(float(np.mean(d)), 3) if d else None
+            rows.append(p)
+        rows.sort(key=lambda r: (r["mean_dice"] if r["mean_dice"] is not None else -1))
+        return {"cases": n, "structures": rows}
 
 
 def _segment(ct_dir, rtstruct, site, device_pref, fast, say, get_segmenter, presets=None,
@@ -681,6 +839,8 @@ def make_handler(manager: JobManager, server_ref: dict):
                                    "intents": INTENTS, "anatomy": ANATOMY_ORDER,
                                    "parotid_landmarks": __import__("oar_contour.parotid_refine",
                                                                    fromlist=["x"]).LANDMARK_NAMES})
+            if parts == ["api", "dataset"]:
+                return self._json(manager.dataset())
             if parts == ["api", "info"]:
                 acc = guess_accelerator()
                 sp = manager._settings().get("speed", {})
@@ -720,8 +880,11 @@ def make_handler(manager: JobManager, server_ref: dict):
                         return self._json({"error": "axis"}, 400)
                     return self._json(v.contours(axis, int(q.get("i", ["0"])[0])))
                 if what == "rtstruct":
-                    return self._send(200, job.rtstruct.read_bytes(), "application/dicom",
-                                      {"Content-Disposition": f'attachment; filename="RS_AI_OAR_{job.id}.dcm"'})
+                    approved = job.dir / "RS_DUYET.dcm"
+                    use_approved = approved.exists() and q.get("version", ["duyet"])[0] != "goc"
+                    f, nm = (approved, f"RS_DUYET_{job.id}.dcm") if use_approved else (job.rtstruct, f"RS_AI_OAR_{job.id}.dcm")
+                    return self._send(200, f.read_bytes(), "application/dicom",
+                                      {"Content-Disposition": f'attachment; filename="{nm}"'})
             self._json({"error": "not found"}, 404)
 
         # -- POST / PUT
@@ -777,6 +940,36 @@ def make_handler(manager: JobManager, server_ref: dict):
                         return self._json({"error": "Ca đã chạy"}, 409)
                     manager.start(job)
                     return self._json(job.public())
+                if parts[3] in ("edit", "undo", "structure", "approve"):
+                    if job.status != "done":
+                        return self._json({"error": "Ca chưa xong"}, 409)
+                    v = manager.viewer(job)
+                    data = json.loads(self._body() or b"{}")
+                    try:
+                        if parts[3] == "edit":
+                            axis = str(data.get("axis", "axial"))
+                            if axis not in ("axial", "coronal", "sagittal") or data.get("op") not in ("add", "erase"):
+                                raise ValueError("Tham số không hợp lệ")
+                            pts = [(float(x), float(y)) for x, y in data.get("points", [])][:5000]
+                            i = v.edit(str(data.get("name")), axis, int(data.get("i", 0)), data["op"], pts,
+                                       float(np.clip(float(data.get("radius_mm", 3)), 0.5, 30)))
+                            return self._json({"i": i, "contours": v.contours(axis, i), "dirty": True})
+                        if parts[3] == "undo":
+                            return self._json({"undone": v.undo_last(), "dirty": v.dirty})
+                        if parts[3] == "structure":
+                            name = str(data.get("name", "")).strip()
+                            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,31}", name):
+                                raise ValueError("Tên chỉ gồm chữ không dấu, số, dấu _ (ví dụ Brainstem, OpticChiasm)")
+                            if name in v.masks:
+                                raise ValueError("Đã có cấu trúc này")
+                            palette = [(255, 99, 71), (60, 179, 113), (65, 105, 225), (238, 130, 238), (255, 215, 0),
+                                       (0, 206, 209), (255, 140, 0), (154, 205, 50)]
+                            v.add_structure(name, palette[len(v.masks) % len(palette)])
+                            return self._json({"colors": {n: v.colors[n] for n in v.masks}, "dirty": True})
+                        if parts[3] == "approve":
+                            return self._json(manager.approve(job))
+                    except ValueError as e:
+                        return self._json({"error": str(e)}, 400)
                 if parts[3] == "reveal":
                     if sys.platform == "darwin":
                         subprocess.Popen(["open", str(job.dir)])
