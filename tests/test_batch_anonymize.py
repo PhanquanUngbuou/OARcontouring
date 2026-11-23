@@ -21,7 +21,7 @@ def test_anonymize_keeps_rtstruct_linked_and_removes_phi(tmp_path):
             ds = dcmread(f)
             ds.PatientName, ds.PatientID, ds.PatientBirthDate = name, f"BN{k}9999", "19600101"
             ds.InstitutionName, ds.ReferringPhysicianName, ds.AccessionNumber = "BV K", "BS X", "ACC123"
-            ds.StudyDate = "20250315"
+            ds.StudyDate, ds.StudyTime = "20250315", "101530"
             ds.save_as(f)
         run_pipeline(ct, src / name / "RS.dcm", FakeSegmenter(thorax_labels()), site="thorax")
 
@@ -32,13 +32,16 @@ def test_anonymize_keeps_rtstruct_linked_and_removes_phi(tmp_path):
     for case in cases:
         files = list(case.rglob("*.dcm"))
         blob = b"".join(f.read_bytes() for f in files)
-        for bad in (b"Nguyen", b"Tran", b"9999", b"19600101", b"BV K", b"BS X", b"ACC123", b"20250315", b"PHANTOM"):
+        for bad in (b"Nguyen", b"Tran", b"9999", b"19600101", b"BV K", b"BS X", b"ACC123", b"20250315", b"101530",
+                    b"PHANTOM"):
             assert bad not in blob, bad
         ds = dcmread(next((case / "CT").iterdir()))
         assert ds.PatientName == case.name and ds.PatientIdentityRemoved == "YES"
         # RTSTRUCT vẫn khớp ảnh CT sau ẩn danh
         rt = RTStructBuilder.create_from(str(case / "CT"), str(next((case / "RTSTRUCT").iterdir())))
         assert rt.get_roi_mask_by_name("Heart").any()
+        # tạo được RTSTRUCT mới trên ảnh đã ẩn danh (cần ngày/giờ chụp)
+        RTStructBuilder.create_new(str(case / "CT"))
     rows = list(csv.DictReader(open(map_path, encoding="utf-8")))
     assert {r["thu_muc_goc"] for r in rows} == {"Nguyen Van A", "Tran Thi B"}
     assert not list(dst.rglob("*.csv"))  # bảng đối chiếu không nằm trong thư mục ẩn danh

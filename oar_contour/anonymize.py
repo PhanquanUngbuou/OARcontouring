@@ -34,13 +34,15 @@ REMOVE = [
     "RequestAttributesSequence", "RequestedProcedureID", "ScheduledProcedureStepID", "PerformedProcedureStepID",
     "DeviceSerialNumber", "PlateID", "ImageComments", "StudyComments", "ProtocolName", "PerformedStationName",
     "PerformedLocation", "ReviewerName", "StructureSetDescription", "ContentCreatorName", "PersonName",
-    "InstanceCreationDate", "InstanceCreationTime", "StudyTime", "SeriesTime", "AcquisitionTime", "ContentTime",
-    "AcquisitionDateTime", "StructureSetTime", "PerformedProcedureStepStartTime", "PerformedProcedureStepStartDate",
+    "InstanceCreationDate", "InstanceCreationTime",
+    "AcquisitionDateTime", "PerformedProcedureStepStartTime", "PerformedProcedureStepStartDate",
     "PerformedProcedureStepEndDate", "PerformedProcedureStepEndTime", "ReviewDate", "ReviewTime",
 ]
 # Ngày giữ thẻ nhưng thay bằng ngày cố định (nhiều phần mềm cần có StudyDate)
 FIXED_DATE = "20000101"
 DATES = ["StudyDate", "SeriesDate", "AcquisitionDate", "ContentDate", "StructureSetDate"]
+FIXED_TIME = "000000"
+TIMES = ["StudyTime", "SeriesTime", "AcquisitionTime", "ContentTime", "StructureSetTime"]
 # UID không phải định danh (giữ nguyên)
 _KEEP_UID_SUFFIX = ("ClassUID", "TransferSyntaxUID")
 
@@ -73,12 +75,18 @@ class Anonymizer:
         for kw in DATES:
             if kw in ds:
                 setattr(ds, kw, FIXED_DATE)
+        for kw in TIMES:
+            if kw in ds:
+                setattr(ds, kw, FIXED_TIME)
 
     def anonymize(self, ds: Dataset, code: str) -> Dataset:
         ds.remove_private_tags()
         self._walk(ds)
         ds.PatientName = code
         ds.PatientID = code
+        if "StudyInstanceUID" in ds:  # nhiều phần mềm (Monaco, rt-utils) cần có ngày/giờ chụp
+            ds.StudyDate = getattr(ds, "StudyDate", FIXED_DATE) or FIXED_DATE
+            ds.StudyTime = getattr(ds, "StudyTime", FIXED_TIME) or FIXED_TIME
         ds.PatientIdentityRemoved = "YES"
         ds.DeidentificationMethod = "QuanContour: basic profile, UIDs remapped, dates fixed"
         if hasattr(ds, "file_meta"):
