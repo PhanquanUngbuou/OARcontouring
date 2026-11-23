@@ -22,4 +22,4 @@ else:
 PY
 python scripts/tai_model.py
 echo
-echo "Cài xong. Bước tiếp theo xem HUONG_DAN_CLOUD.md (mục 4)."
+echo "Cài xong. Bước tiếp theo: HUONG_DAN_CLOUD.md, mục ③ bước 4 (tải dữ liệu lên, chạy hàng loạt)."

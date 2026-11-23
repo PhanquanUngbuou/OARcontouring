@@ -30,6 +30,8 @@ cd ~ && zip -qr DuLieu_AnDanh.zip DuLieu_AnDanh
 - Mỗi ca thành một thư mục mã ngẫu nhiên `QC_XXXXXXXX`: xoá tên, mã bệnh nhân, ngày sinh, ngày giờ chụp, nơi chụp,
   bác sĩ, kỹ thuật viên…; UID được thay nhất quán (RTSTRUCT cũ vẫn khớp ảnh).
 - **Bảng đối chiếu** mã ca ↔ thư mục gốc ở `~/QuanContour_maps/` — **giữ trên máy này, không đưa lên cloud**.
+- Nếu ca có kèm RTSTRUCT cũ (contour bác sĩ đã vẽ trước đây), file đó cũng được ẩn danh và vẫn khớp ảnh;
+  bước khoanh hàng loạt hiện chỉ dùng ảnh CT (RTSTRUCT cũ chưa được dùng).
 - ~50 ca khoảng 5–8 GB. Nếu mạng chậm, chia thành vài file zip nhỏ (ví dụ mỗi file 10 ca).
 
 ## ③ Thuê máy GPU và khoanh hàng loạt

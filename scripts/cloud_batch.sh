@@ -9,4 +9,4 @@ quancontour batch "$CASES" --protocol "$PROTO" --intent curative --results "$WOR
   || echo "CÓ CA LỖI: xem log ở trên; các ca chạy được vẫn được đóng gói."
 cd "$WORK" && tar czf ketqua.tar.gz ketqua
 echo
-echo "Xong. Tải file $WORK/ketqua.tar.gz về MacBook (xem HUONG_DAN_CLOUD.md, mục 5)."
+echo "Xong. Tải file $WORK/ketqua.tar.gz về MacBook (xem HUONG_DAN_CLOUD.md, mục ④)."
