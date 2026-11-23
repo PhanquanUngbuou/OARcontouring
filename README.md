@@ -50,7 +50,8 @@ Xem bảng chi tiết bằng lệnh `oar-contour structures`. Với tiểu khung
 sau có thể **tự huấn luyện model bổ sung** (nnU-Net) bằng contour cũ của khoa để vẽ các cơ quan còn thiếu.
 
 > 🍎 **MacBook:** [HUONG_DAN_MAC.md](HUONG_DAN_MAC.md) · 🪟 **Windows (card NVIDIA):**
-> [HUONG_DAN_WINDOWS.md](HUONG_DAN_WINDOWS.md)
+> [HUONG_DAN_WINDOWS.md](HUONG_DAN_WINDOWS.md) · ☁️ **Khoanh hàng loạt trên cloud GPU:**
+> [HUONG_DAN_CLOUD.md](HUONG_DAN_CLOUD.md)
 
 ## App giao diện (khuyên dùng)
 

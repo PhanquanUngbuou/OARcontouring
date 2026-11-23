@@ -293,6 +293,7 @@ class Job:
     names: list = field(default_factory=list)  # danh sách OAR cố định của ca (theo phác đồ)
     refine_parotid: bool = False  # hiệu chỉnh tuyến mang tai (thử nghiệm)
     approved: bool = False  # bác sĩ đã sửa & lưu bản duyệt (dữ liệu huấn luyện)
+    source: str = ""  # tên thư mục ca nguồn (khoanh hàng loạt)
     # tiến trình
     plan: list = field(default_factory=list)  # [(tên bước, trọng số)]
     step: int = 0
@@ -369,7 +370,7 @@ class Job:
                 "step_label": self.plan[min(self.step, len(self.plan) - 1)][0] if self.plan else "",
                 "fast": self.fast, "demo": self.demo, "elapsed": round(elapsed),
                 "device": self.device, "device_used": self.device_used,
-                "protocol": self.protocol, "intent": self.intent, "label": self.label(), "n_files": self.n_files,
+                "protocol": self.protocol, "intent": self.intent, "label": self.label(), "source": self.source, "n_files": self.n_files,
                 "result": self.result, "error": self.error, "folder": str(self.dir)}
 
 
@@ -421,7 +422,7 @@ class JobManager:
                           device=data.get("device", "auto"), device_used=data.get("device_used", ""),
                           saved_elapsed=int(data.get("elapsed", 0)),
                           protocol=data.get("protocol", ""), intent=data.get("intent", ""),
-                          approved=(meta.parent / "RS_DUYET.dcm").exists())
+                          approved=(meta.parent / "RS_DUYET.dcm").exists(), source=data.get("source", ""))
                 if job.rtstruct.exists() and job.ct_dir.exists():
                     self.jobs[job.id] = job
             except Exception:

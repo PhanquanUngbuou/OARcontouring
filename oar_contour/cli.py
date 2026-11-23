@@ -76,6 +76,26 @@ def cmd_app(args) -> int:
     return 0
 
 
+def cmd_anonymize(args) -> int:
+    from .anonymize import anonymize_tree
+
+    m = anonymize_tree(args.src, args.dst, args.map)
+    print(f"\nXong. Thư mục ẩn danh: {args.dst}\nBảng đối chiếu (GIỮ TRÊN MÁY NÀY, không đưa lên cloud): {m}")
+    return 0
+
+
+def cmd_batch(args) -> int:
+    from .batch import run_batch
+    from .segment import TotalSegmentatorRunner
+
+    dev = args.device or _default_device()
+    s = run_batch(args.cases, Path(args.results).expanduser(), args.protocol, args.intent, args.fast,
+                  lambda d: TotalSegmentatorRunner(device=dev))
+    print(f"\nXong: {s['ok']} ca, bỏ qua {s['skipped']}, lỗi {len(s['failed'])} {s['failed'] or ''}"
+          f" trong {s['seconds'] // 60} phút. Kết quả: {args.results}")
+    return 0 if not s["failed"] else 1
+
+
 def cmd_evaluate(args) -> int:
     from .evaluate import compare_rtstructs, summarize, write_csv
 
@@ -167,6 +187,20 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--results", default="~/OAR_ketqua", help="thư mục lưu kết quả các ca")
     sp.add_argument("--no-browser", action="store_true", help="không tự mở trình duyệt")
     sp.set_defaults(func=cmd_app)
+
+    sp = sub.add_parser("anonymize", help="ẩn danh DICOM (mỗi thư mục con = 1 ca) trước khi đưa ra ngoài")
+    sp.add_argument("src", help="thư mục nguồn (mỗi thư mục con = 1 ca)")
+    sp.add_argument("dst", help="thư mục kết quả ẩn danh")
+    sp.add_argument("--map", help="nơi lưu bảng đối chiếu (mặc định ~/QuanContour_maps/)")
+    sp.set_defaults(func=cmd_anonymize)
+
+    sp = sub.add_parser("batch", help="khoanh hàng loạt nhiều ca theo phác đồ")
+    sp.add_argument("cases", help="thư mục chứa các ca (mỗi thư mục con = 1 ca)")
+    sp.add_argument("--protocol", default="headneck", help="vd. headneck, brain, thorax, breast, abdomen, pelvis")
+    sp.add_argument("--intent", default="curative", choices=["curative", "palliative"])
+    sp.add_argument("--results", default="~/OAR_ketqua", help="thư mục kết quả (định dạng của app)")
+    model_opts(sp)
+    sp.set_defaults(func=cmd_batch)
 
     sp = sub.add_parser("evaluate", help="so sánh contour AI với contour bác sĩ trên nhiều ca")
     sp.add_argument("cases", help="thư mục, mỗi ca 1 thư mục con: ct/, ai.dcm, ref.dcm")
