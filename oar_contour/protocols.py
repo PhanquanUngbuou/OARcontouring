@@ -100,10 +100,10 @@ PROTOCOLS: list[Protocol] = [
 
 # Bộ cấu trúc CHUẨN cho kho dữ liệu huấn luyện (khoa đã chốt): vẽ đủ ở MỌI ca để model học thống nhất.
 # Theo đồng thuận OAR đầu cổ Brouwer 2015; khoa chọn: cả tủy sống và ống sống, thanh quản gộp, không vẽ cơ khít
-# hầu, thêm khớp thái dương hàm; mạch cảnh do app vẽ nháp.
+# hầu, không vẽ giao thoa thị giác, thêm khớp thái dương hàm; mạch cảnh do app vẽ nháp.
 TRAINING_SETS: dict[str, list[str]] = {
     "headneck": [
-        "Brainstem", "SpinalCord", "SpinalCanal", "OpticChiasm", "OpticNrv_L", "OpticNrv_R", "Eye_L", "Eye_R", "Lens_L", "Lens_R",
+        "Brainstem", "SpinalCord", "SpinalCanal", "OpticNrv_L", "OpticNrv_R", "Eye_L", "Eye_R", "Lens_L", "Lens_R",
         "Cochlea_L", "Cochlea_R", "Lobe_Temporal_L", "Lobe_Temporal_R", "Pituitary", "Parotid_L", "Parotid_R",
         "Glnd_Submand_L", "Glnd_Submand_R", "Bone_Mandible", "Cavity_Oral", "Larynx", "Esophagus", "Glnd_Thyroid",
         "Joint_TM_L", "Joint_TM_R", "A_Carotid_L", "A_Carotid_R", "A_Carotid_Int_L", "A_Carotid_Int_R",

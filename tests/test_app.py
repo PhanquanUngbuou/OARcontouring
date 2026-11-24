@@ -325,7 +325,7 @@ def test_checklist_and_approve_warning(ct_dir, tmp_path):
         manager._run(job)
         assert job.status == "done", job.error
         chk = json.loads(_req(base, f"/api/jobs/{job.id}/checklist")[2])
-        assert "Brainstem" in chk["missing"] and len(chk["required"]) == 30
+        assert "Brainstem" in chk["missing"] and len(chk["required"]) == 29
         try:
             post(f"/api/jobs/{job.id}/approve", {})
             raise AssertionError("phải nhắc thiếu cấu trúc")

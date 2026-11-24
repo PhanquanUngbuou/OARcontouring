@@ -102,6 +102,6 @@ def test_headneck_training_set_has_department_choices():
     from oar_contour.protocols import TRAINING_SETS
 
     t = TRAINING_SETS["headneck"]
-    assert {"SpinalCanal", "SpinalCord", "Larynx"} <= set(t) and len(t) == 30
+    assert {"SpinalCanal", "SpinalCord", "Larynx"} <= set(t) and len(t) == 29 and "OpticChiasm" not in t
     assert not [n for n in t if n.startswith("Musc_Constrict")]
     assert {"Joint_TM_L", "Joint_TM_R", "A_Carotid_L", "A_Carotid_Int_R"} <= set(t)
