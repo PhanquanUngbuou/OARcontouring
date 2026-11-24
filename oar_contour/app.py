@@ -666,6 +666,18 @@ class JobManager:
             job.viewer = ViewerData.load(job.ct_dir, rs if rs.exists() else job.rtstruct)
         return job.viewer
 
+    def checklist(self, job: Job) -> dict | None:
+        """Bộ cấu trúc chuẩn của kho dữ liệu (theo phác đồ): đã có / còn thiếu trong ca này."""
+        from .protocols import TRAINING_SETS
+
+        req = TRAINING_SETS.get(job.protocol)
+        if not req:
+            return None
+        v = self.viewer(job)
+        present = [n for n in req if n in v.masks and v.masks[n][1].any()]
+        return {"set": job.protocol, "required": req, "present": present,
+                "missing": [n for n in req if n not in present]}
+
     def approve(self, job: Job) -> dict:
         """Lưu bản bác sĩ đã duyệt: RTSTRUCT mới + thống kê so với bản tự động -> kho dữ liệu huấn luyện."""
         from .evaluate import dice
@@ -687,13 +699,15 @@ class JobManager:
                 stats.append({"name": name, "dice": None, "edited": True, "new": True, "cc_auto": 0,
                               "cc_approved": round(float(e.sum()) * cc, 1)})
         del orig
+        chk = self.checklist(job)
         (job.dir / "duyet.json").write_text(json.dumps(
             {"id": job.id, "label": job.label(), "protocol": job.protocol, "stats": stats,
+             "missing": chk["missing"] if chk else [],
              "time": datetime.now().isoformat(timespec="seconds")}, ensure_ascii=False, indent=1), encoding="utf-8")
         v.dirty = False
         v.undo.clear()
         job.approved = True
-        return {"stats": stats}
+        return {"stats": stats, "missing": chk["missing"] if chk else []}
 
     # ---------------------------------------------------------- dọn dẹp & xuất dữ liệu
     def _deletable(self) -> list[Job]:
@@ -973,6 +987,8 @@ def make_handler(manager: JobManager, server_ref: dict):
                     if axis not in ("axial", "coronal", "sagittal"):
                         return self._json({"error": "axis"}, 400)
                     return self._json(v.contours(axis, int(q.get("i", ["0"])[0])))
+                if what == "checklist":
+                    return self._json(manager.checklist(job) or {})
                 if what == "rtstruct":
                     approved = job.dir / "RS_DUYET.dcm"
                     use_approved = approved.exists() and q.get("version", ["duyet"])[0] != "goc"
@@ -1074,6 +1090,9 @@ def make_handler(manager: JobManager, server_ref: dict):
                             v.add_structure(name, palette[len(v.masks) % len(palette)])
                             return self._json({"colors": {n: v.colors[n] for n in v.masks}, "dirty": True})
                         if parts[3] == "approve":
+                            chk = manager.checklist(job)
+                            if chk and chk["missing"] and not data.get("force"):
+                                return self._json({"error": "missing", "missing": chk["missing"]}, 409)
                             return self._json(manager.approve(job))
                     except ValueError as e:
                         return self._json({"error": str(e)}, 400)

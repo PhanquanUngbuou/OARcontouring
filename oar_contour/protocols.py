@@ -43,9 +43,9 @@ _PARAAORTIC = ["A_Aorta", "V_Venacava_I"]  # mốc vẽ CTV hạch cạnh độn
 PROTOCOLS: list[Protocol] = [
     # ------------------------------------------------------------------ theo vùng
     _p("headneck", "Theo vùng", "U đầu cổ",
-       ["Brain", "SpinalCord", *_HN_GLANDS, *_EYES, "Bone_Mandible", "Glnd_Thyroid", "Esophagus", "Trachea",
-        "Lung_L", "Lung_R"],
-       ["Brain", "SpinalCord", "Parotid_L", "Parotid_R", *_EYES, "Esophagus", "Trachea"],
+       ["Brain", "SpinalCord", "SpinalCanal", *_HN_GLANDS, *_EYES, "Bone_Mandible", "Glnd_Thyroid", "Esophagus", "Trachea",
+        "Lung_L", "Lung_R", "A_Carotid_L", "A_Carotid_R", "A_Carotid_Int_L", "A_Carotid_Int_R"],
+       ["Brain", "SpinalCord", "SpinalCanal", "Parotid_L", "Parotid_R", *_EYES, "Esophagus", "Trachea"],
        note="Gồm vòm, khoang miệng, họng miệng, thanh quản, hạ họng, tuyến nước bọt, tuyến giáp, "
             "hạch cổ, hốc mũi – xoang, lymphoma hốc mắt / mũi xoang.", region="headneck"),
     _p("brain", "Theo vùng", "U não",
@@ -97,6 +97,18 @@ PROTOCOLS: list[Protocol] = [
         "Colon", "Bone_Vertebra_*"],
        note="Các đốt sống giúp định vị; cơ quan ngoài trường chụp tự bỏ qua.", region="thorax"),
 ]
+
+# Bộ cấu trúc CHUẨN cho kho dữ liệu huấn luyện (khoa đã chốt): vẽ đủ ở MỌI ca để model học thống nhất.
+# Theo đồng thuận OAR đầu cổ Brouwer 2015; khoa chọn: cả tủy sống và ống sống, thanh quản gộp, không vẽ cơ khít
+# hầu, thêm khớp thái dương hàm; mạch cảnh do app vẽ nháp.
+TRAINING_SETS: dict[str, list[str]] = {
+    "headneck": [
+        "Brainstem", "SpinalCord", "SpinalCanal", "OpticChiasm", "OpticNrv_L", "OpticNrv_R", "Eye_L", "Eye_R", "Lens_L", "Lens_R",
+        "Cochlea_L", "Cochlea_R", "Lobe_Temporal_L", "Lobe_Temporal_R", "Pituitary", "Parotid_L", "Parotid_R",
+        "Glnd_Submand_L", "Glnd_Submand_R", "Bone_Mandible", "Cavity_Oral", "Larynx", "Esophagus", "Glnd_Thyroid",
+        "Joint_TM_L", "Joint_TM_R", "A_Carotid_L", "A_Carotid_R", "A_Carotid_Int_L", "A_Carotid_Int_R",
+    ],
+}
 
 PROTOCOL_BY_ID = {p.id: p for p in PROTOCOLS}
 INTENTS = {"curative": "Triệt căn", "palliative": "Triệu chứng"}

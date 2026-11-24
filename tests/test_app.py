@@ -308,3 +308,35 @@ def test_export_anonymized_and_cleanup(ct_dir, tmp_path):
     res = manager.cleanup()
     assert res["deleted"] == 1 and jobs[0].id in manager.jobs and jobs[1].id not in manager.jobs
     assert not jobs[1].dir.exists() and jobs[0].dir.exists()
+
+
+def test_checklist_and_approve_warning(ct_dir, tmp_path):
+    manager = JobManager(tmp_path / "results", lambda device: FakeSegmenter(thorax_labels()))
+    ref = {}
+    server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(manager, ref))
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    post = lambda path, obj: json.loads(_req(base, path, "POST", json.dumps(obj).encode())[2])
+    try:
+        job = manager.create("auto", False, False, protocol="headneck", intent="curative",
+                             names=["SpinalCanal", "Lung_L"])
+        for f in ct_dir.iterdir():
+            (job.dir / "upload" / f.name).write_bytes(f.read_bytes())
+        manager._run(job)
+        assert job.status == "done", job.error
+        chk = json.loads(_req(base, f"/api/jobs/{job.id}/checklist")[2])
+        assert "Brainstem" in chk["missing"] and len(chk["required"]) == 30
+        try:
+            post(f"/api/jobs/{job.id}/approve", {})
+            raise AssertionError("phải nhắc thiếu cấu trúc")
+        except urllib.error.HTTPError as e:
+            assert e.code == 409 and "Brainstem" in json.loads(e.read())["missing"]
+        post(f"/api/jobs/{job.id}/structure", {"name": "Brainstem"})
+        post(f"/api/jobs/{job.id}/edit", {"name": "Brainstem", "axis": "axial", "i": 10, "op": "add",
+                                          "points": [[30, 20]], "radius_mm": 4})
+        chk2 = json.loads(_req(base, f"/api/jobs/{job.id}/checklist")[2])
+        assert "Brainstem" in chk2["present"]
+        r = post(f"/api/jobs/{job.id}/approve", {"force": True})
+        assert "Brainstem" not in r["missing"] and "Cochlea_L" in r["missing"]
+    finally:
+        server.shutdown()

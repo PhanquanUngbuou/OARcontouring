@@ -24,10 +24,12 @@ class Structure:
     note: str = ""
     # True: cơ quan liền một khối -> chỉ giữ khối lớn nhất, bỏ mảnh vụn khoanh nhầm chỗ khác
     single: bool = True
+    # dựng thêm từ nhãn gốc, ví dụ "canal": ống sống nở từ tủy sống tới giới hạn xương
+    derive: str | None = None
 
 
 # Cơ quan có thể gồm nhiều khối rời trên ảnh -> KHÔNG lọc khối lớn nhất
-_MULTI_PART = {"Lungs", "Bowel_Small", "Colon", "Bone_Pelvic", "Bone_Hips", "SpinalCord", "Esophagus", "Duodenum",
+_MULTI_PART = {"Lungs", "Bowel_Small", "Colon", "Bone_Pelvic", "Bone_Hips", "SpinalCord", "SpinalCanal", "Esophagus", "Duodenum",
                "Breast_L", "Breast_R", "Glnd_Thyroid", "Trachea", "OpticNrv_L", "OpticNrv_R"}
 
 
@@ -51,6 +53,9 @@ CURATED = [
     _s("Trachea", "total", "trachea", (120, 255, 255)),
     _s("SpinalCord", "total", "spinal_cord", (255, 255, 0),
        note="Tủy sống thật, không phải ống sống. Khoa vẽ SpinalCanal thì cần đối chiếu."),
+    Structure("SpinalCanal", "total", ("spinal_cord",), (255, 230, 80),
+              note="Ống sống dựng nháp từ tủy sống (nở tới thành xương): kiểm tra ở các lỗ liên hợp, đĩa đệm.",
+              single=False, derive="canal"),
     _s("A_Aorta", "total", "aorta", (200, 0, 60)),
     _s("Breast_L", "breasts", "breast", (255, 150, 200), side="left",
        note="Vú tuyến (OAR vú đối bên), KHÔNG phải CTV vú."),

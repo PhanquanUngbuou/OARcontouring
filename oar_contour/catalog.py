@@ -26,7 +26,7 @@ TASKS: dict[str, dict] = {
 
 # Thứ tự giải phẫu để hiển thị danh sách OAR (từ đầu xuống chân); cấu trúc khác xếp sau theo ABC
 ANATOMY_ORDER: list[tuple[str, list[str]]] = [
-    ("Thần kinh – mắt", ["Brain", "SpinalCord", "Eye_L", "Eye_R", "Lens_L", "Lens_R", "OpticNrv_L", "OpticNrv_R"]),
+    ("Thần kinh – mắt", ["Brain", "SpinalCord", "SpinalCanal", "Eye_L", "Eye_R", "Lens_L", "Lens_R", "OpticNrv_L", "OpticNrv_R"]),
     ("Đầu cổ", ["Parotid_L", "Parotid_R", "Parotid_L_Ref", "Parotid_R_Ref", "Glnd_Submand_L", "Glnd_Submand_R", "Bone_Mandible", "Tongue",
                 "Musc_Constrict_S", "Musc_Constrict_M", "Musc_Constrict_I", "Larynx_Air", "Cartilage_Thyroid",
                 "Cartilage_Cricoid", "Glnd_Thyroid"]),

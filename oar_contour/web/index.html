@@ -128,6 +128,10 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: v
 .dirty { color: #ffb84d; }
 .canvas.brush { cursor: crosshair; }
 .srow.act { outline: 2px solid var(--accent); background: var(--accent-soft); }
+.checklist { border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; margin-bottom: 10px; background: var(--soft); }
+.checklist .miss { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.checklist .miss button { font-size: 11px; padding: 2px 7px; border-radius: 5px; }
+.nsgrid { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px 12px; }
 .stats { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
 .stats td, .stats th { padding: 3px 4px; border-bottom: 1px solid var(--line); text-align: left; }
 .stats .bad { color: var(--err); font-weight: 600; } .stats .ok { color: var(--ok); }
@@ -322,6 +326,7 @@ footer.lic button { font-size: 11px; padding: 0; border: none; background: none;
   <aside id="right">
     <div class="card">
       <h2>Cấu trúc</h2>
+      <div class="checklist small" id="checklist" hidden></div>
       <div class="muted small" style="margin-bottom:6px">Bấm vào tên để chọn cấu trúc cần sửa</div>
       <div class="slist" id="list"></div>
       <button class="ghost small" id="newStruct">+ Thêm cấu trúc (bác sĩ tự vẽ)</button>
@@ -344,6 +349,15 @@ footer.lic button { font-size: 11px; padding: 0; border: none; background: none;
   </div>
 </div>
 
+<div class="modal" id="nsModal" hidden>
+  <div class="dialog" style="width:min(560px,100%)">
+    <div class="dhead"><h2>Thêm cấu trúc</h2><button id="nsClose" aria-label="Đóng">✕</button></div>
+    <div class="muted small" style="padding:12px 18px 8px" id="nsHint">Chọn tên chuẩn còn thiếu trong bộ dữ liệu:</div>
+    <div class="nsgrid" id="nsList"></div>
+    <div class="dfoot"><input class="dsearch" style="margin:0;flex:1" id="nsName" placeholder="hoặc gõ tên khác (chữ không dấu, ví dụ Lips)"><button class="primary" id="nsOk">Thêm</button></div>
+  </div>
+</div>
+
 <div class="modal" id="licModal" hidden>
   <div class="dialog" style="width:min(560px,100%)">
     <div class="dhead"><h2>Thông tin & giấy phép</h2><button id="licClose" aria-label="Đóng">✕</button></div>
@@ -358,7 +372,7 @@ const $ = (id) => document.getElementById(id);
 const api = async (path, opts = {}) => {
   const r = await fetch(path, opts);
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || r.statusText);
+  if (!r.ok) { const err = new Error(j.error || r.statusText); err.data = j; err.status = r.status; throw err; }
   return j;
 };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -619,6 +633,7 @@ async function select(id) {
   current = id;
   $("stage").hidden = true; $("toolbar").hidden = true; $("vfoot").hidden = true; $("edittools").hidden = true;
   $("ph").hidden = true; $("phRun").hidden = false; setDirty(false); setTool("view"); active = null;
+  $("checklist").hidden = true; checkInfo = null;
   $("caseRun").hidden = false; $("caseErr").hidden = true; $("caseActions").hidden = true;
   $("list").innerHTML = ""; $("extra").innerHTML = "";
   const tick = async () => {
@@ -672,7 +687,7 @@ async function showResult(j) {
   if (notes.length) extra += `<div class="muted small" style="margin-top:10px">${notes.map(([n, t]) => `<b>${esc(n)}</b>: ${esc(t)}`).join("<br>")}</div>`;
   $("extra").innerHTML = extra;
   if (j.approved) $("extra").innerHTML = '<div class="muted small" style="margin-top:10px">✓ Ca này đã có bản bác sĩ duyệt (đang hiển thị bản đã duyệt).</div>' + extra;
-  $("edittools").hidden = false; setDirty(j.dirty); updateDl(j.approved);
+  $("edittools").hidden = false; setDirty(j.dirty); updateDl(j.approved); loadChecklist();
   for (const a of ["axial", "coronal", "sagittal"]) view.idx[a] = Math.floor(vol.sizes[a] / 2);
   const first0 = r.structures[0] && vol.centers[r.structures[0].name];
   if (first0) view.idx = { ...first0 };
@@ -819,6 +834,7 @@ async function endStroke() {
     const r = await api(`/api/jobs/${current}/edit`, { method: "POST", body: JSON.stringify(
       { name: active, axis: view.axis, i: view.idx[view.axis], op: tool, points: pts, radius_mm: brushMm }) });
     lastCont = r.contours; paintContours(); setDirty(true);
+    if (checkInfo && checkInfo.missing && checkInfo.missing.includes(active)) loadChecklist();
   } catch (err) { alert("Lỗi: " + err.message); drawLive(); }
 }
 const endDrag = () => { if (stroke) { endStroke(); return; } drag = null; cv.classList.remove("grabbing"); };
@@ -844,27 +860,61 @@ async function undoEdit() {
   }
 }
 $("undoBtn").onclick = undoEdit;
-$("newStruct").onclick = async () => {
-  if (!current || !vol) return;
-  const name = prompt("Tên cấu trúc mới (chữ không dấu, ví dụ Brainstem, OpticChiasm, Cochlea_L):");
-  if (!name) return;
+let checkInfo = null;
+async function loadChecklist() {
+  if (!current) return;
+  checkInfo = await api(`/api/jobs/${current}/checklist`).catch(() => null);
+  const box = $("checklist");
+  if (!checkInfo || !checkInfo.required) { box.hidden = true; return; }
+  const n = checkInfo.present.length, t = checkInfo.required.length;
+  box.hidden = false;
+  box.innerHTML = `<b>Bộ dữ liệu đầu cổ: ${n}/${t}</b>` + (checkInfo.missing.length
+    ? `<div class="muted">Còn thiếu (bấm để thêm và vẽ):</div><div class="miss">${checkInfo.missing.map((m) => `<button data-add="${esc(m)}">${esc(m)}</button>`).join("")}</div>`
+    : ' <span class="st-done">✓ đủ</span>');
+  box.querySelectorAll("[data-add]").forEach((b) => (b.onclick = () => addStructure(b.dataset.add)));
+}
+async function addStructure(name) {
+  name = (name || "").trim();
+  if (!name || !current) return;
   try {
-    const r = await api(`/api/jobs/${current}/structure`, { method: "POST", body: JSON.stringify({ name: name.trim() }) });
-    vol.colors = r.colors; active = name.trim(); renderStructList(); setDirty(true); setTool("add");
+    if (!vol.colors[name]) {
+      const r = await api(`/api/jobs/${current}/structure`, { method: "POST", body: JSON.stringify({ name }) });
+      vol.colors = r.colors; setDirty(true);
+    }
+    active = name; renderStructList(); setTool("add"); $("nsModal").hidden = true; loadChecklist();
   } catch (e) { alert("Lỗi: " + e.message); }
+}
+$("newStruct").onclick = () => {
+  if (!current || !vol) return;
+  const miss = (checkInfo && checkInfo.missing || []).filter((m) => !vol.colors[m]);
+  $("nsHint").hidden = !miss.length;
+  $("nsList").innerHTML = miss.map((m) => `<button data-ns="${esc(m)}">${esc(m)}</button>`).join("");
+  $("nsList").querySelectorAll("[data-ns]").forEach((b) => (b.onclick = () => addStructure(b.dataset.ns)));
+  $("nsName").value = ""; $("nsModal").hidden = false; $("nsName").focus();
 };
+$("nsOk").onclick = () => addStructure($("nsName").value);
+$("nsName").addEventListener("keydown", (e) => { if (e.key === "Enter") addStructure($("nsName").value); });
+$("nsClose").onclick = () => ($("nsModal").hidden = true);
 $("approveBtn").onclick = async () => {
   if (!current) return;
   $("approveBtn").disabled = true; $("approveBtn").textContent = "Đang lưu…";
   try {
-    const r = await api(`/api/jobs/${current}/approve`, { method: "POST", body: "{}" });
+    let r;
+    try {
+      r = await api(`/api/jobs/${current}/approve`, { method: "POST", body: "{}" });
+    } catch (e) {
+      if (e.status !== 409 || !e.data || !e.data.missing) throw e;
+      if (!confirm(`Ca này còn thiếu ${e.data.missing.length} cấu trúc của bộ dữ liệu:\n${e.data.missing.join(", ")}\n\n` +
+        "Để kho dữ liệu thống nhất nên vẽ đủ. Vẫn lưu bản duyệt?")) return;
+      r = await api(`/api/jobs/${current}/approve`, { method: "POST", body: JSON.stringify({ force: true }) });
+    }
     setDirty(false); updateDl(true); refreshJobs();
     const rows = r.stats.map((st) => `<tr><td>${esc(st.name)}</td><td>${st.new ? "vẽ mới" : `<span class="${st.dice < 0.9 ? "bad" : "ok"}">${Math.round(st.dice * 100)}%</span>`}</td>` +
       `<td>${st.new ? "" : st.edited ? "đã sửa" : "giữ nguyên"}</td></tr>`).join("");
     $("extra").innerHTML = `<div class="manual" style="background:var(--accent-soft);color:var(--ink);border-color:transparent"><b>✓ Đã lưu bản duyệt</b>` +
       `RTSTRUCT đã sửa sẵn sàng đưa vào Monaco và đã được lưu vào kho dữ liệu huấn luyện.</div>` +
       `<table class="stats"><tr><th>Cấu trúc</th><th>Khớp bản tự động</th><th></th></tr>${rows}</table>`;
-    loadDataset();
+    loadDataset(); loadChecklist();
   } catch (e) { alert("Lỗi: " + e.message); }
   finally { $("approveBtn").disabled = false; $("approveBtn").textContent = "Lưu bản đã duyệt"; }
 };

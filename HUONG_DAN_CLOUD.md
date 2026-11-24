@@ -6,7 +6,7 @@
 ```
 
 > **Trước khi bắt đầu:** xin phép viện (hội đồng đạo đức / phòng CNTT) cho việc xử lý ảnh **đã ẩn danh** trên cloud.
-> Chốt danh sách cấu trúc + atlas sẽ vẽ thống nhất cho tất cả các ca.
+> Bộ 30 cấu trúc đầu cổ đã chốt: [docs/BO_DU_LIEU_DAU_CO.md](docs/BO_DU_LIEU_DAU_CO.md) — vẽ thống nhất cho tất cả các ca.
 
 ## ① Xuất dữ liệu
 

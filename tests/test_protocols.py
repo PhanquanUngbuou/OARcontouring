@@ -18,9 +18,11 @@ def test_minimal_models_rules():
     for pid in ("headneck", "brain", "brain_srs"):
         for intent in ("curative", "palliative"):
             c = estimate_cost(default_names(pid, intent))
-            # đầu cổ / não: không chạy tim mạch, xương sườn, đốt sống, mạch máu/cơ cổ
-            assert not {"cardiac", "ribs", "vertebrae"} & set(c["total_parts"]), (pid, intent)
-            assert not {"headneck_bones_vessels", "headneck_muscles", "head_muscles"} & set(c["tasks"])
+            # đầu cổ / não: không chạy xương sườn, đốt sống, cơ vùng đầu cổ
+            assert not {"ribs", "vertebrae"} & set(c["total_parts"]), (pid, intent)
+            assert not {"headneck_muscles", "head_muscles"} & set(c["tasks"])
+            if pid != "headneck" or intent == "palliative":  # mạch cảnh chỉ ở đầu cổ triệt căn (khoa chọn)
+                assert "cardiac" not in c["total_parts"] and "headneck_bones_vessels" not in c["tasks"], (pid, intent)
     assert "Bone_Mandible" in default_names("headneck", "curative")
     for p in PROTOCOLS:
         for intent in ("curative", "palliative"):
@@ -80,3 +82,26 @@ def test_parotid_refine_adds_landmarks_and_refined_structure(ct_dir, tmp_path):
     assert "Bone_Mandible" in report.written  # mốc được xuất ra
     assert {"head_muscles", "headneck_bones_vessels", "craniofacial_structures"} <= set(seg.calls)
     assert all(n in __import__("oar_contour.catalog", fromlist=["x"]).catalog() for n in LANDMARK_NAMES)
+
+
+def test_spinal_canal_draft_grows_from_cord_and_stops_at_bone():
+    import numpy as np
+    from oar_contour.pipeline import spinal_canal_from_cord
+
+    hu = np.full((4, 40, 40), 300.0)  # xương
+    yy, xx = np.mgrid[0:40, 0:40]
+    canal = (yy - 20) ** 2 + (xx - 20) ** 2 <= 36  # ống sống bán kính 6 voxel, dịch não tuỷ HU 10
+    hu[:, canal] = 10.0
+    cord = np.zeros(hu.shape, bool)
+    cord[:, (yy - 20) ** 2 + (xx - 20) ** 2 <= 9] = True
+    out = spinal_canal_from_cord(cord, hu, (1.0, 1.0, 3.0), max_mm=8)
+    assert out[:, canal].all() and not out[:, ~canal].any()
+
+
+def test_headneck_training_set_has_department_choices():
+    from oar_contour.protocols import TRAINING_SETS
+
+    t = TRAINING_SETS["headneck"]
+    assert {"SpinalCanal", "SpinalCord", "Larynx"} <= set(t) and len(t) == 30
+    assert not [n for n in t if n.startswith("Musc_Constrict")]
+    assert {"Joint_TM_L", "Joint_TM_R", "A_Carotid_L", "A_Carotid_Int_R"} <= set(t)

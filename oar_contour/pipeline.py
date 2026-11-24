@@ -76,6 +76,33 @@ def crop_range(rough: np.ndarray, class_map: dict[int, str], labels, margin_mm: 
     return max(0, int(zs.min()) - pad), min(nz, int(zs.max()) + 1 + pad)
 
 
+def spinal_canal_from_cord(cord: np.ndarray, hu: np.ndarray, spacing_xyz, max_mm: float = 5.0,
+                           hu_lo: float = -150.0, hu_hi: float = 60.0) -> np.ndarray:
+    """Dựng nháp ống sống: nở tủy sống trong mặt phẳng tới tối đa max_mm, chỉ qua mô có HU của dịch não tuỷ /
+    mỡ ngoài màng cứng (dừng ở xương, đĩa đệm, dây chằng có HU cao hơn hu_hi)."""
+    from scipy import ndimage
+
+    sx, sy, _ = spacing_xyz
+    n = max(1, int(round(max_mm / min(sx, sy))))
+    zz, yy, xx = np.nonzero(cord)
+    m = n + 2
+    bb = (slice(zz.min(), zz.max() + 1), slice(max(0, yy.min() - m), yy.max() + m + 1),
+          slice(max(0, xx.min() - m), xx.max() + m + 1))
+    c, h = cord[bb], hu[bb]
+    allowed = ((h >= hu_lo) & (h <= hu_hi)) | c
+    st = np.zeros((3, 3, 3), bool)
+    st[1] = ndimage.generate_binary_structure(2, 1)
+    g = c.copy()
+    for _ in range(n):
+        g = ndimage.binary_dilation(g, structure=st) & allowed
+    g = ndimage.binary_closing(g, structure=np.ones((1, 3, 3), bool)) & allowed
+    for k in range(g.shape[0]):
+        g[k] = ndimage.binary_fill_holes(g[k])
+    out = np.zeros_like(cord)
+    out[bb] = g
+    return out
+
+
 def largest_component(mask: np.ndarray) -> np.ndarray:
     from scipy import ndimage
 
@@ -137,6 +164,8 @@ def build_masks(
             mask &= keep_cols[np.newaxis, np.newaxis, :]
         if s.single and mask.any():
             mask = largest_component(mask)
+        if s.derive == "canal" and mask.any():
+            mask = spinal_canal_from_cord(mask, sitk.GetArrayViewFromImage(image), image.GetSpacing())
         if int(mask.sum()) < min_voxels:
             empty.append(s.name)
             continue
