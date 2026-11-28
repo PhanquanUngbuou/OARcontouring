@@ -6,7 +6,7 @@
 ```
 
 > **Trước khi bắt đầu:** xin phép viện (hội đồng đạo đức / phòng CNTT) cho việc xử lý ảnh **đã ẩn danh** trên cloud.
-> Bộ 30 cấu trúc đầu cổ đã chốt: [docs/BO_DU_LIEU_DAU_CO.md](docs/BO_DU_LIEU_DAU_CO.md) — vẽ thống nhất cho tất cả các ca.
+> Bộ 29 cấu trúc đầu cổ đã chốt: [docs/BO_DU_LIEU_DAU_CO.md](docs/BO_DU_LIEU_DAU_CO.md) — vẽ thống nhất cho tất cả các ca.
 
 ## ① Xuất dữ liệu
 
@@ -76,7 +76,7 @@ Ví dụ với RunPod (tên nút trên web có thể khác một chút; nhà cun
    ```
 4. Mở lại QuanContour → 50 ca nằm trong **Ca gần đây** (đã khoanh sẵn, mở không phải chạy lại model).
 5. Sửa từng ca → **Lưu bản đã duyệt** (xem phần "Sửa contour" trong HUONG_DAN_MAC.md). Vẽ thống nhất cùng một atlas;
-   vẽ thêm các cơ quan cần dạy model (Brainstem, OpticChiasm, Cochlea…) bằng **+ Thêm cấu trúc**.
+   vẽ thêm các cơ quan cần dạy model (Brainstem, Cochlea, Pituitary, Lobe_Temporal, Cavity_Oral, Larynx, Joint_TM — model chưa vẽ nháp được) bằng **+ Thêm cấu trúc**.
 
 ## ⑤ Sau khi sửa xong
 
